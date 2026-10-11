@@ -1,0 +1,917 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Railify</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* Layout: one 430px phone frame centred on a quiet stage; inside, a screen stack with a blue header, scrolling body and pinned action bar — the Railify kit's structure. */
+:root{
+  --brand:#246BFD; --brand-ink:#FFFFFF; --brand-soft:#E9F0FF; --brand-softer:#F3F7FF;
+  --bg:#F7F8FA; --surface:#FFFFFF; --ink:#212121; --ink-2:#424242; --muted:#8A8F98; --line:#EEEFF2;
+  --head:#246BFD; --head-ink:#FFFFFF; --stage:#E7ECF5;
+  --ok:#12B981; --ok-soft:#E6F8F1; --bad:#F75555; --bad-soft:#FEECEC; --warn:#E89B0C; --warn-soft:#FDF4E3;
+  --seat-occ:#8D9AB0; --seat-free:#E9F0FF; --seat-free-ink:#246BFD;
+  --shadow:0 4px 24px rgba(30,52,100,.07); --scrim:rgba(9,14,28,.5); --qr:#FFFFFF; --qr-ink:#111111;
+  --f:'Urbanist',ui-rounded,'Segoe UI',system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --brand:#3B7BFF; --brand-soft:#1F2C4A; --brand-softer:#1B2236;
+  --bg:#181A20; --surface:#1F222A; --ink:#FFFFFF; --ink-2:#E0E0E0; --muted:#9E9E9E; --line:#35383F;
+  --head:#1F222A; --head-ink:#FFFFFF; --stage:#0F1115;
+  --ok-soft:#173A30; --bad-soft:#3E2024; --warn-soft:#3A2F17;
+  --seat-occ:#4A5162; --seat-free:#26324D; --seat-free-ink:#8DB1FF;
+  --shadow:0 4px 24px rgba(0,0,0,.25); --scrim:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --brand:#3B7BFF; --brand-soft:#1F2C4A; --brand-softer:#1B2236;
+  --bg:#181A20; --surface:#1F222A; --ink:#FFFFFF; --ink-2:#E0E0E0; --muted:#9E9E9E; --line:#35383F;
+  --head:#1F222A; --head-ink:#FFFFFF; --stage:#0F1115;
+  --ok-soft:#173A30; --bad-soft:#3E2024; --warn-soft:#3A2F17;
+  --seat-occ:#4A5162; --seat-free:#26324D; --seat-free-ink:#8DB1FF;
+  --shadow:0 4px 24px rgba(0,0,0,.25); --scrim:rgba(0,0,0,.6); color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--stage);color:var(--ink);font-family:var(--f);font-size:15px;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+input,select{font:inherit;color:var(--ink)}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.phone{position:relative;height:100%;max-width:430px;margin:0 auto;background:var(--bg);overflow:hidden;display:flex;flex-direction:column}
+.sb{display:none}
+@media (min-width:560px) and (min-height:700px){
+  body{display:grid;place-items:center;padding-block:20px}
+  .phone{width:430px;height:min(932px,calc(100vh - 40px));border-radius:44px;box-shadow:0 30px 80px rgba(20,40,90,.22),0 0 0 10px var(--surface),0 0 0 11px var(--line)}
+  .sb{display:flex;justify-content:space-between;align-items:center;padding:12px 28px 6px;font-weight:700;font-size:15px;background:var(--sbbg,var(--head));color:var(--sbink,var(--head-ink));flex:none}
+  .sb i{display:flex;gap:6px;align-items:center}
+}
+#view{flex:1;min-height:0;position:relative}
+.scr{display:flex;flex-direction:column;height:100%}
+.hd{background:var(--head);color:var(--head-ink);display:grid;grid-template-columns:32px 1fr 32px;align-items:center;gap:8px;padding:14px 20px 18px;flex:none}
+.hd h1{margin:0;text-align:center;font-size:22px;font-weight:700;text-wrap:balance}
+.hd .sub{display:block;font-size:13px;font-weight:500;opacity:.8;text-align:center;margin-top:2px}
+.ibtn{width:32px;height:32px;display:grid;place-items:center;border-radius:10px}
+.ibtn:hover{background:rgba(255,255,255,.12)}
+.body{flex:1;min-height:0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+.body.flush{padding:0;gap:0}
+.body>*{flex-shrink:0}
+.foot{flex:none;padding:16px 20px 22px;background:var(--surface);border-top:1px solid var(--line);display:flex;gap:12px;align-items:center}
+.ic{flex:none;display:block}
+
+/* type */
+h2{margin:0;font-size:20px;font-weight:700;text-wrap:balance}
+h3{margin:0;font-size:17px;font-weight:700}
+.muted{color:var(--muted)}
+small,.sm{font-size:13px}
+.xs{font-size:11.5px}
+.num{font-variant-numeric:tabular-nums}
+.row{display:flex;align-items:center;gap:12px}
+.grow{flex:1;min-width:0}
+.between{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* controls */
+.btn{height:54px;border-radius:16px;background:var(--brand);color:var(--brand-ink);font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;transition:transform .12s, opacity .2s, box-shadow .2s;box-shadow:0 6px 16px rgba(36,107,253,.25)}
+.btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.45;box-shadow:none;cursor:not-allowed}
+.btn.soft{background:var(--brand-soft);color:var(--brand);box-shadow:none}
+.btn.ghost{background:transparent;color:var(--brand);box-shadow:none;border:1.5px solid var(--brand)}
+.btn.danger{background:var(--bad);box-shadow:none}
+.btn.sm{height:42px;font-size:14px;border-radius:12px}
+.link{color:var(--brand);font-weight:700}
+.card{background:var(--surface);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+.fld{display:flex;flex-direction:column;gap:6px}
+.fld>label,.lbl{font-weight:700;font-size:14px}
+.inp{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid var(--line);padding:8px 0;min-height:44px;color:var(--muted);width:100%}
+.inp:focus-within{border-color:var(--brand)}
+.inp input,.inp select{flex:1;min-width:0;border:0;background:transparent;outline:0;font-weight:600;font-size:16px;padding:0}
+.inp .val{flex:1;min-width:0;color:var(--ink);font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inp .val.ph{color:var(--muted);font-weight:500}
+.box{display:flex;align-items:center;gap:10px;background:var(--bg);border:1.5px solid transparent;border-radius:14px;padding:0 16px;min-height:54px}
+.box:focus-within{border-color:var(--brand);background:var(--brand-softer)}
+.box input,.box select{flex:1;min-width:0;border:0;background:transparent;outline:0;font-weight:600;font-size:15px;padding:14px 0}
+.seg{display:flex;border-bottom:2px solid var(--line)}
+.seg button{flex:1;padding:12px 4px;font-weight:700;color:var(--muted);text-align:center;margin-bottom:-2px;border-bottom:3px solid transparent;border-radius:2px}
+.seg button.on{color:var(--brand);border-color:var(--brand)}
+.pills{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;flex:none}
+.pills::-webkit-scrollbar{display:none}
+.pill{border:1.5px solid var(--brand);color:var(--brand);border-radius:100px;padding:8px 18px;font-weight:700;white-space:nowrap;font-size:14px}
+.pill.on{background:var(--brand);color:var(--brand-ink)}
+.tag{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:4px 8px;border-radius:7px;background:var(--brand);color:var(--brand-ink);white-space:nowrap}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.soft{background:var(--brand-soft);color:var(--brand)}
+.hr{height:1px;background:var(--line);flex:none}
+.kv{display:flex;justify-content:space-between;gap:16px;font-size:14.5px}
+.kv span:first-child{color:var(--muted)}
+.kv span:last-child{font-weight:700;text-align:right}
+.switch{width:44px;height:26px;border-radius:20px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.switch.on{background:var(--brand)}.switch.on::after{transform:translateX(18px)}
+.radio{width:22px;height:22px;border-radius:50%;border:2.5px solid var(--brand);flex:none;display:grid;place-items:center}
+.radio.on::after{content:"";width:11px;height:11px;border-radius:50%;background:var(--brand)}
+.check{width:22px;height:22px;border-radius:7px;border:2.5px solid var(--brand);flex:none;display:grid;place-items:center;color:var(--brand-ink)}
+.check.on{background:var(--brand)}
+.sec-h{display:flex;justify-content:space-between;align-items:center}
+.sec-h h2{font-size:21px}
+
+/* trip card */
+.trip{display:flex;flex-direction:column;gap:14px;width:100%}
+.trip[disabled]{opacity:.55;cursor:default}
+.logo{width:40px;height:40px;border-radius:12px;color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px;letter-spacing:.04em;flex:none}
+.trip-top b{display:block;font-size:16.5px}
+.trip-mid{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:14px}
+.trip-mid .st{display:flex;flex-direction:column;gap:4px;min-width:0}
+.trip-mid .st b{font-size:15.5px}
+.trip-mid .t{color:var(--brand);font-weight:700;font-size:19px}
+.trip-mid .r{text-align:right}
+.tline{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--brand)}
+.tline .dash{display:flex;align-items:center;gap:6px}
+.tline .dash::before,.tline .dash::after{content:"";width:26px;border-top:2px dashed currentColor}
+.price{color:var(--brand);font-weight:800;font-size:19px}
+
+/* bottom nav */
+.nav{flex:none;display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line);padding:8px 8px 14px}
+.nav button{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--muted);padding:6px 0}
+.nav button.on{color:var(--brand);font-weight:800}
+
+/* home */
+.hero{background:var(--head);color:var(--head-ink);padding:6px 20px 110px;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;right:-60px;top:-80px;width:240px;height:240px;border:40px solid rgba(255,255,255,.06);border-radius:50%}
+.hero::after{content:"";position:absolute;left:-40px;bottom:-110px;width:200px;height:200px;border:30px solid rgba(255,255,255,.05);border-radius:50%}
+.av{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#FFB86B,#FF7E7E);color:#fff;display:grid;place-items:center;font-weight:800;font-size:17px;flex:none;border:2px solid rgba(255,255,255,.7)}
+.bell{width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);display:grid;place-items:center;position:relative}
+.bell .dot{position:absolute;top:10px;right:11px;width:8px;height:8px;border-radius:50%;background:var(--bad);border:2px solid var(--head)}
+.search{margin:-96px 20px 0;position:relative;z-index:1;display:flex;flex-direction:column;gap:16px;padding:6px 20px 20px}
+.swap{width:42px;height:42px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;flex:none;align-self:center;transition:transform .3s}
+.swap:hover{transform:rotate(180deg)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.qa{display:grid;grid-template-columns:repeat(4,1fr);gap:18px 6px;padding:20px 12px}
+.qa button{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;font-size:12.5px;font-weight:600;line-height:1.25}
+.qa .ico{width:52px;height:52px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;transition:transform .15s}
+.qa button:hover .ico{transform:translateY(-2px)}
+.hscroll{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -20px;padding:4px 20px 12px;scrollbar-width:none}
+.hscroll::-webkit-scrollbar{display:none}
+.hscroll>*{scroll-snap-align:start;flex:none;width:82%}
+.promo{border-radius:20px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow);display:flex;flex-direction:column;text-align:left}
+.promo .art{height:150px;position:relative;padding:18px;display:flex;flex-direction:column;gap:6px;justify-content:center}
+.promo .art b{font-size:19px;max-width:60%;line-height:1.2}
+.code{display:inline-flex;font-weight:800;font-size:12.5px;border-radius:6px;overflow:hidden;width:max-content;margin-top:4px}
+.code span:first-child{background:var(--brand);color:var(--brand-ink);padding:5px 8px}
+.code span:last-child{background:var(--surface);color:var(--ink);padding:5px 10px;letter-spacing:.06em}
+.promo .bot{padding:14px 16px;display:flex;align-items:center;gap:10px}
+.news-art{height:170px;position:relative;overflow:hidden}
+
+/* seats */
+.legend{display:flex;justify-content:center;gap:18px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:6px}
+.seatgrid{display:grid;grid-template-columns:repeat(2,1fr) 40px repeat(2,1fr);gap:10px;align-items:center;text-align:center}
+.seatgrid .h{font-weight:700;color:var(--muted)}
+.seat{aspect-ratio:1/0.82;max-width:100%;border-radius:10px;font-weight:700;display:grid;place-items:center;background:var(--seat-free);color:var(--seat-free-ink);transition:transform .1s}
+.seat:active{transform:scale(.94)}
+.seat.occ{background:var(--seat-occ);color:#fff;cursor:not-allowed}
+.seat.sel{background:var(--brand);color:var(--brand-ink)}
+.rown{color:var(--muted);font-weight:600}
+
+/* sheet & modal */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:20;display:flex;align-items:flex-end;animation:fade .2s}
+.scrim.center{align-items:center;justify-content:center;padding:28px}
+.sheet{background:var(--surface);width:100%;border-radius:28px 28px 0 0;padding:10px 20px 24px;max-height:82%;display:flex;flex-direction:column;gap:14px;animation:up .25s cubic-bezier(.2,.8,.2,1)}
+.sheet .grab{width:38px;height:4px;border-radius:4px;background:var(--line);margin:0 auto 4px}
+.sheet h3{text-align:center;font-size:20px}
+.sheet .list{overflow-y:auto;display:flex;flex-direction:column}
+.opt{display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--line);font-weight:600;width:100%}
+.opt:last-child{border-bottom:0}
+.modal{background:var(--surface);border-radius:28px;padding:32px 26px 26px;width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;animation:pop .25s cubic-bezier(.2,.9,.3,1.2)}
+.modal .badge{width:110px;height:110px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;box-shadow:0 0 0 14px var(--brand-soft),0 0 0 28px var(--brand-softer);margin:14px 0 18px}
+.modal .badge.bad{background:var(--bad);box-shadow:0 0 0 14px var(--bad-soft)}
+.modal h2{color:var(--brand);font-size:23px}
+.modal .stack{width:100%;margin-top:6px}
+@keyframes fade{from{opacity:0}}
+@keyframes up{from{transform:translateY(40%);opacity:.4}}
+@keyframes pop{from{transform:scale(.85);opacity:0}}
+.toast{position:absolute;left:20px;right:20px;bottom:96px;z-index:40;background:var(--ink);color:var(--bg);padding:14px 18px;border-radius:14px;font-weight:600;font-size:14px;animation:up .2s;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.spin{width:44px;height:44px;border-radius:50%;border:4px solid var(--brand-soft);border-top-color:var(--brand);animation:rot .9s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* onboarding */
+.splash{background:var(--brand);color:#fff;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.splash h1{margin:0;font-size:40px;font-weight:800;letter-spacing:-.01em}
+.splash .spin{border-color:rgba(255,255,255,.25);border-top-color:#fff;margin-top:120px}
+.walk-art{flex:1;min-height:0;display:grid;place-items:center;position:relative;padding:20px}
+.walk-art .disc{width:min(300px,78%);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 30% 30%,var(--brand-soft),var(--brand-softer));display:grid;place-items:center;color:var(--brand);position:relative}
+.walk-art .fl{position:absolute;background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:10px 12px;font-size:12.5px;font-weight:700;display:flex;gap:8px;align-items:center}
+.dots{display:flex;gap:6px;justify-content:center}
+.dots i{width:8px;height:8px;border-radius:8px;background:var(--line);transition:width .25s}
+.dots i.on{width:28px;background:var(--brand)}
+.otp{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.otp div{height:62px;border-radius:14px;background:var(--bg);border:1.5px solid var(--line);display:grid;place-items:center;font-size:24px;font-weight:800}
+.otp div.on{border-color:var(--brand);background:var(--brand-softer)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--bg);padding:10px;border-radius:16px}
+.pad button{height:56px;font-size:24px;font-weight:600;border-radius:12px;display:grid;place-items:center}
+.pad button:active{background:var(--line)}
+
+/* e-ticket */
+.et-wrap{background:var(--head);flex:1;min-height:0;overflow-y:auto;padding:4px 20px 24px}
+.et{background:var(--surface);border-radius:22px;position:relative}
+.et .qrz{padding:22px 22px 14px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.qr{background:var(--qr);padding:10px;border-radius:12px;width:min(250px,100%);aspect-ratio:1}
+.qr img,.qr canvas{width:100%!important;height:100%!important;image-rendering:pixelated}
+.notch{position:relative;height:28px;display:flex;align-items:center}
+.notch::before,.notch::after{content:"";position:absolute;top:0;width:28px;height:28px;border-radius:50%;background:var(--head)}
+.notch::before{left:-14px}.notch::after{right:-14px}
+.notch i{flex:1;margin:0 22px;border-top:2px dashed var(--line)}
+.et .det{padding:8px 22px 26px;display:flex;flex-direction:column;gap:14px}
+
+/* lists */
+.li{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--line);width:100%}
+.li:last-child{border-bottom:0}
+.ib{width:48px;height:48px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;flex:none}
+summary::-webkit-details-marker{display:none}
+.li b{display:block;font-size:16px}
+.amt-neg{color:var(--bad);font-weight:700}
+.amt-pos{color:var(--brand);font-weight:700}
+.wallet-card{border-radius:24px;padding:22px;color:#fff;background:linear-gradient(135deg,#246BFD 0%,#5089FF 60%,#6C9BFF 100%);position:relative;overflow:hidden;box-shadow:0 14px 30px rgba(36,107,253,.3)}
+.wallet-card::after{content:"";position:absolute;right:-50px;bottom:-70px;width:220px;height:220px;border-radius:50%;border:36px solid rgba(255,255,255,.08)}
+.wallet-card .bal{font-size:36px;font-weight:800;letter-spacing:-.01em}
+.wbtn{background:#fff;color:#212121;border-radius:100px;padding:10px 18px;font-weight:700;display:flex;gap:8px;align-items:center;position:relative;z-index:1}
+.tl{display:flex;flex-direction:column}
+.tl .stp{display:grid;grid-template-columns:56px 24px 1fr;gap:12px;min-height:64px}
+.tl .tm{font-weight:700;text-align:right;padding-top:1px}
+.tl .rail{position:relative;display:flex;justify-content:center}
+.tl .rail::before{content:"";position:absolute;top:0;bottom:0;width:3px;background:var(--line)}
+.tl .stp.done .rail::before{background:var(--brand)}
+.tl .stp:last-child .rail::before{bottom:auto;height:12px}
+.tl .stp:first-child .rail::before{top:10px}
+.tl .node{width:18px;height:18px;border-radius:50%;background:var(--surface);border:3px solid var(--line);position:relative;z-index:1}
+.tl .stp.done .node{border-color:var(--brand);background:var(--brand)}
+.tl .stp.cur .node{border-color:var(--brand);box-shadow:0 0 0 6px var(--brand-soft)}
+.empty{text-align:center;padding:50px 20px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:10px}
+.empty .ib{width:84px;height:84px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center}
+.datestrip{display:grid;grid-template-columns:repeat(5,1fr);background:var(--surface);border-bottom:1px solid var(--line);flex:none}
+.datestrip button{text-align:center;padding:12px 0 10px;color:var(--muted);font-weight:600;border-bottom:3px solid transparent}
+.datestrip button b{display:block;font-size:20px;margin-top:2px}
+.datestrip button.on{color:var(--brand);border-color:var(--brand)}
+.food{display:grid;grid-template-columns:62px 1fr auto;gap:14px;align-items:center}
+.food .fi{width:62px;height:62px;border-radius:16px;display:grid;place-items:center;font-weight:800;font-size:20px;color:#fff}
+.step{display:flex;align-items:center;gap:10px}
+.step button{width:30px;height:30px;border-radius:9px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center}
+.step button.plus{background:var(--brand);color:var(--brand-ink)}
+.coin{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#FFD66B,#F2A93B);display:grid;place-items:center;color:#7A4A00;font-weight:800;flex:none}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="phone" id="phone">
+  <div class="sb" id="sb"><span>9:41</span><i><svg width="18" height="11" viewBox="0 0 18 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="6" rx="1"/><rect x="10" y="2.5" width="3" height="8.5" rx="1"/><rect x="15" y="0" width="3" height="11" rx="1"/></svg><svg width="25" height="12" viewBox="0 0 25 12" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="21" height="11" rx="3"/><rect x="2.5" y="2.5" width="17" height="7" rx="1.5" fill="currentColor"/><path d="M23.5 4v4"/></svg></i></div>
+  <div id="view"></div>
+</div>
+
+<script>
+/* ---------- icons ---------- */
+const I={
+ back:'<path d="M19 12H5M11 5l-7 7 7 7"/>',
+ bell:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>',
+ swap:'<path d="M7 4v16M3.5 7.5 7 4l3.5 3.5M17 20V4M20.5 16.5 17 20l-3.5-3.5"/>',
+ cal:'<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/>',
+ train:'<rect x="5" y="3" width="14" height="14" rx="3.5"/><path d="M5 10.5h14M8.5 21l1.6-4M15.5 21l-1.6-4"/><circle cx="8.8" cy="13.8" r=".6" fill="currentColor"/><circle cx="15.2" cy="13.8" r=".6" fill="currentColor"/>',
+ trainfill:'<path fill="currentColor" stroke="none" d="M8 3h8a4 4 0 0 1 4 4v7a3 3 0 0 1-3 3l1.6 3.4h-2.3L14.8 17H9.2l-1.5 3.4H5.4L7 17a3 3 0 0 1-3-3V7a4 4 0 0 1 4-4Zm-2 6v2.5h12V9Zm2.5 6.2a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Zm7 0a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Z"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c.8-3.8 4-5.5 7.5-5.5s6.7 1.7 7.5 5.5"/>',
+ users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.4 3.3-5 6.5-5s5.9 1.6 6.5 5M16 4.6a3.5 3.5 0 0 1 0 6.8M18 15.3c2 .6 3.2 2.2 3.5 4.7"/>',
+ down:'<path d="m6 9 6 6 6-6"/>',
+ right:'<path d="m9 6 6 6-6 6"/>',
+ arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+ home:'<path d="M3.5 10.5 12 4l8.5 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-4v-6H9v6H5A1.5 1.5 0 0 1 3.5 19z"/>',
+ ticket:'<path d="M3.5 7.5A1.5 1.5 0 0 1 5 6h14a1.5 1.5 0 0 1 1.5 1.5V10a2 2 0 0 0 0 4v2.5A1.5 1.5 0 0 1 19 18H5a1.5 1.5 0 0 1-1.5-1.5V14a2 2 0 0 0 0-4z"/><path d="M14.5 6v12" stroke-dasharray="2 2.2"/>',
+ wallet:'<path d="M19 7V5.5A1.5 1.5 0 0 0 17.5 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a1.5 1.5 0 0 0 1.5-1.5v-10A1.5 1.5 0 0 0 19 7H5"/><circle cx="16.5" cy="13.5" r="1" fill="currentColor"/>',
+ filter:'<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+ check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+ x:'<path d="M6 6l12 12M18 6 6 18"/>',
+ share:'<circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="m8.2 10.8 7.6-4M8.2 13.2l7.6 4"/>',
+ eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/>',
+ eyeoff:'<path d="M3 3l18 18M10.6 6.1A9 9 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-3 3.6M6.4 7.6A15.6 15.6 0 0 0 2.5 12S6 18 12 18a9 9 0 0 0 4-.9"/><path d="M9.9 10a3 3 0 0 0 4.1 4.1"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',
+ minus:'<path d="M5 12h14"/>',
+ edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+ trash:'<path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13"/>',
+ food:'<path d="M7 3v8M4.5 3v5a2.5 2.5 0 0 0 5 0V3M7 11v10M17 21V3c-2 1-3.5 3.5-3.5 7v3H17"/>',
+ clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+ pin:'<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>',
+ info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.7v.1"/>',
+ dollar:'<circle cx="12" cy="12" r="8.5"/><path d="M14.8 9.2c-.4-1-1.5-1.7-2.8-1.7-1.6 0-2.8.9-2.8 2.2 0 3 5.8 1.6 5.8 4.6 0 1.3-1.3 2.2-3 2.2-1.4 0-2.6-.7-3-1.8M12 6v1.5M12 16.5V18"/>',
+ refund:'<path d="M4 8h11a5 5 0 0 1 0 10H8"/><path d="m7.5 4.5-3.5 3.5 3.5 3.5"/>',
+ alarm:'<circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.5M4 5l3-2.5M20 5l-3-2.5"/>',
+ box:'<path d="M12 3 20 7.3v9.4L12 21l-8-4.3V7.3z"/><path d="M4 7.3 12 11.6l8-4.3M12 11.6V21"/>',
+ seat:'<path d="M7 4h6a2 2 0 0 1 2 2v6H9a2 2 0 0 1-2-2z"/><path d="M5 12a2 2 0 0 0 2 2h8l2 6M7 14l-1.5 6M15 12h2.5a1.5 1.5 0 0 1 1.5 1.5"/>',
+ route:'<circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/>',
+ live:'<circle cx="12" cy="12" r="2.5"/><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.5 10.5 0 0 0 0 14.8M19.4 4.6a10.5 10.5 0 0 1 0 14.8"/>',
+ resched:'<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17M9 15h6M13 13l2 2-2 2"/>',
+ cancel:'<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17M10 13l4 4M14 13l-4 4"/>',
+ search:'<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.3-4.3"/>',
+ card:'<rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h19M6.5 15h4"/>',
+ logout:'<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M9 16l-4-4 4-4M5 12h11"/>',
+ moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>',
+ shield:'<path d="M12 3 19.5 6v5.5c0 4.5-3.2 8-7.5 9.5-4.3-1.5-7.5-5-7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.3-4.4"/>',
+ gift:'<rect x="3.5" y="8" width="17" height="4" rx="1"/><path d="M5 12v8.5h14V12M12 8v12.5M12 8S10.5 3.5 8 4.5 9 8 12 8Zm0 0s1.5-4.5 4-3.5S15 8 12 8Z"/>',
+ qr:'<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"/>',
+ help:'<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.4M12 16.6v.1"/>',
+ copy:'<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+ topup:'<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>',
+ class:'<path d="M5 18V8.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2V18M3 18h18M8.5 6.5V4M15.5 6.5V4M8 12h8"/>',
+ coin:'<ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/>',
+ sort:'<path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M13 6h8M13 11h6M13 16h4"/>',
+ news:'<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M7.5 9h9M7.5 12.5h9M7.5 16h5"/>',
+};
+const ic=(n,s=24,w=1.8)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]||''}</svg>`;
+const LOGO=(s=96,c='currentColor')=>`<svg width="${s}" height="${s}" viewBox="0 0 96 96" aria-hidden="true"><path fill="${c}" d="M14 52c0-17 14-31 31-31h16c11 0 20 9 21 20l1 13c.3 4-2.9 7-6.9 7H20c-3.3 0-6-2.7-6-6v-3Z"/><path fill="var(--logo-cut,#fff)" opacity=".92" d="M34 30h22l-6 12H24c2-6 6-10 10-12Zm28 0h7c4 0 7 3 8 7l1 5H57Z"/><path fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round" d="M16 70h62M24 80h46"/></svg>`;
+
+/* ---------- utils ---------- */
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>(n<0?'-':'')+'$'+Math.abs(n).toFixed(2);
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseD=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const addD=(s,n)=>{const d=parseD(s);d.setDate(d.getDate()+n);return iso(d)};
+const NOW=new Date(); const TODAY=iso(NOW); const NOWMIN=NOW.getHours()*60+NOW.getMinutes();
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const fdate=s=>{const d=parseD(s);return `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`};
+const fdateS=s=>{const d=parseD(s);return `${DOW[d.getDay()]}, ${d.getDate()} ${MON[d.getMonth()]}`};
+const ftime=m=>`${pad(Math.floor(m/60)%24)}:${pad(m%60)}`;
+const fdur=m=>`${Math.floor(m/60)}h ${m%60}m`;
+const hsh=s=>{let x=2166136261;for(const c of s)x=Math.imul(x^c.charCodeAt(0),16777619);return x>>>0};
+const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const REG=[];const R=o=>(REG.push(o),REG.length-1);
+const initials=n=>n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const dtOf=(date,min)=>{const d=parseD(date);d.setMinutes(min);return d};
+const clockNow=()=>{const d=new Date();return `${pad(d.getHours())}:${pad(d.getMinutes())}`};
+
+/* ---------- reference data ---------- */
+const STATIONS=['Apex Square','Proxima','Aurora Point','Neo Delta','Nexus Square','Fusion Park','Harbor Gate','Crescent Hill','Lumen Central','Orion Bay'];
+const CODES=['APX','PRX','AUR','NDL','NXS','FSP','HBG','CRH','LUM','ORB'];
+const OPS=[{n:'Bluestar Rail',c:'#246BFD',k:'BS',p:40},{n:'Northline',c:'#D94848',k:'NL',p:34},{n:'Coastal Express',c:'#0E9F6E',k:'CX',p:42},{n:'Metro Link',c:'#2B3A5C',k:'ML',p:38},{n:'Summit Rail',c:'#D9861A',k:'SR',p:45}];
+const CLASSES=[{n:'Economy',m:1},{n:'Business',m:1.6},{n:'Executive',m:2.2}];
+const COUPONS={'8XKSD':{pct:25,max:20,label:'Get 25% OFF on ticket booking'},'RAIL10':{pct:10,max:30,label:'10% off any round trip'}};
+const MENU=[
+ {n:'Chicken Rice Bowl',d:'Grilled chicken, jasmine rice, greens',p:12,c:'#E4774A'},
+ {n:'Veggie Wrap',d:'Hummus, roast peppers, spinach',p:9,c:'#3FA36B'},
+ {n:'Classic Burger',d:'Beef patty, cheddar, pickles',p:14,c:'#B5602F'},
+ {n:'Caesar Salad',d:'Romaine, parmesan, croutons',p:10,c:'#7AA23A'},
+ {n:'Iced Latte',d:'Double shot, oat or whole milk',p:4.5,c:'#8A6A4F'},
+ {n:'Orange Juice',d:'Fresh pressed, 350 ml',p:5,c:'#E8A23A'},
+ {n:'Fudge Brownie',d:'Dark chocolate, sea salt',p:4,c:'#6B4436'},
+];
+const PMS=[
+ {id:'wallet',n:'My Wallet',ico:'wallet'},
+ {id:'paypal',n:'PayPal',ico:'card'},
+ {id:'gpay',n:'Google Pay',ico:'card'},
+ {id:'apay',n:'Apple Pay',ico:'card'},
+];
+const NEWS=[
+ {t:'Train App Launches New Feature to Help Commuters Beat Rush Hour Crowds',ago:'5 hours ago',hue:'#246BFD',
+  b:['A popular train app has launched a new feature designed to help commuters avoid the crowds during rush hour. The app, which is used by millions of commuters around the country, has added a real-time crowd tracking feature that provides users with information on the busiest and least crowded train services.','The feature, which is based on data from train operators and crowdsourced information from commuters, uses color-coded maps to show the level of crowding on each train service. Users can quickly check the app to see which trains are likely to be crowded and plan their journey accordingly.','The train app\'s developers have worked closely with train operators to ensure that the new feature provides accurate and up-to-date information on crowding levels. The feature is also designed to be easy to use, with clear instructions and intuitive interface.','The new feature has already received positive feedback from users, with many commuters praising the app for its ability to help them avoid crowded trains during rush hour.']},
+ {t:'Harbor Gate Station Reopens With Step-Free Access on Every Platform',ago:'1 day ago',hue:'#0E9F6E',
+  b:['After eight months of works, Harbor Gate has reopened with lifts to all six platforms and a widened concourse.','Tactile paving and new audio announcements are in place, and the ticket hall now has two staffed help points open from first to last train.','Operators expect the upgrade to cut boarding times at peak hours, since passengers with luggage and buggies no longer funnel through a single ramp.']},
+ {t:'Night Trains Return to the Orion Bay Line This Winter',ago:'3 days ago',hue:'#6C4BD8',
+  b:['Overnight services between Apex Square and Orion Bay will run Friday and Saturday nights from December through March.','Trains leave at 23:40 and arrive just after 05:00, with Business and Executive cabins offering reclining seats and a breakfast box.','Tickets are on sale now in the app, and Executive fares include a free hot drink from the onboard café.']},
+];
+const PROMOS=[
+ {code:'8XKSD',t:'Get 25% OFF on Ticket Booking',s:'Limited time offer',terms:['25% off the ticket subtotal, up to $20 per booking.','Valid on one-way and round trips in every class.','One use per account. Cannot be combined with other codes.']},
+ {code:'RAIL10',t:'10% Off Every Round Trip',s:'Ends this month',terms:['10% off the ticket subtotal, up to $30 per booking.','Works on any booking, best value on round trips.','One code per booking.']},
+];
+
+/* ---------- trains ---------- */
+function genTrains(from,to,date,cls){
+  const a=STATIONS.indexOf(from), b=STATIONS.indexOf(to), dist=Math.max(1,Math.abs(a-b));
+  const seed=hsh(from+'|'+to+'|'+date), r=rng(seed);
+  const starts=[360,450,540,630,720,840,960,1080,1200];
+  return starts.map((dep,k)=>{
+    const oi=(seed+k)%OPS.length, op=OPS[oi], dur=30+dist*22+Math.floor(r()*4)*5;
+    const seats=r()<.12?0:Math.floor(r()*60)+3;
+    return {no:`${op.k} ${100+((seed>>>5)+k*37)%800}`,op:oi,from,to,date,dep,arr:dep+dur,dur,cls,price:Math.round((op.p+dist*6)*CLASSES[cls].m),seats};
+  });
+}
+const departed=t=>dtOf(t.date,t.dep)<new Date();
+const arrDate=t=>t.arr>=1440?addD(t.date,1):t.date;
+function stops(t){
+  const a=STATIONS.indexOf(t.from), b=STATIONS.indexOf(t.to), dir=a<b?1:-1, ids=[];
+  for(let i=a;i!==b+dir;i+=dir) ids.push(i);
+  return ids.map((i,k)=>({n:STATIONS[i],code:CODES[i],m:Math.round(t.dep+t.dur*k/(ids.length-1)),km:Math.abs(i-a)*38}));
+}
+
+/* ---------- state ---------- */
+const KEY='railify-v1';
+let S;
+function seed(){
+  const mk=(from,to,off,k,cls,status,pay,seats,pax,booked)=>{
+    const d=addD(TODAY,off), t=genTrains(from,to,d,cls)[k];
+    const sub=t.price*pax.length, fee=2*pax.length;
+    return {id:bid(from+off),legs:[{t,seats}],pax,cls,payment:pay,sub,fee,disc:0,total:sub+fee,status,booked:booked||addD(d,-7),trip:'one'};
+  };
+  const me='Andrew Ainsley';
+  const tk=[
+    mk('Apex Square','Proxima',2,2,0,'active','wallet',['C1/B2'],[me]),
+    mk('Proxima','Aurora Point',6,1,1,'active','wallet',['C2/A4','C2/B4'],[me,'Jenny Wilson']),
+    mk('Apex Square','Proxima',-9,2,0,'completed','wallet',['C3/D2'],[me]),
+    mk('Neo Delta','Apex Square',-24,4,0,'completed','paypal',['C1/A1'],[me]),
+    mk('Nexus Square','Fusion Park',-4,3,0,'canceled','wallet',['C2/C5'],[me]),
+  ];
+  return {
+    signed:false, onboarded:false, theme:null,
+    user:{name:me,email:'andrew.ainsley@yourdomain.com',phone:'+1 312 467 3783',idNo:'3637 4738 4899',dob:'1995-12-27'},
+    balance:946.5, coins:25, hideBal:false,
+    tx:[
+      {n:'Order Train Food',d:addD(TODAY,-1),tm:'09:41',a:-20,k:'food'},
+      {n:'Proxima - Aurora Point',d:addD(TODAY,-2),tm:'09:39',a:-tk[1].total,k:'train'},
+      {n:'Apex Square - Proxima',d:addD(TODAY,-5),tm:'09:36',a:-tk[0].total,k:'train'},
+      {n:'Top Up Wallet',d:addD(TODAY,-8),tm:'09:30',a:125,k:'topup'},
+      {n:'Refund: Nexus Square - Fusion Park',d:addD(TODAY,-4),tm:'14:45',a:+(tk[4].total*.75).toFixed(2),k:'refund'},
+    ],
+    tickets:tk,
+    orders:[{id:'FD'+bid('food').slice(2),tid:tk[0].id,items:[[0,1],[4,1]],total:18.5,status:'active',d:addD(TODAY,-1)},{id:'FD'+bid('food2').slice(2),tid:tk[4].id,items:[[2,1]],total:16,status:'canceled',d:addD(TODAY,-6)}],
+    passengers:['Jenny Wilson','Ronald Richards','Eleanor Pena','Jacob Jones','Savannah Nguyen','Kristin Watson','Albert Flores','Jane Cooper','Cody Fisher','Courtney Henry'],
+    cards:[{brand:'Visa',last:'4679',exp:'09/28'}],
+    alarms:[], notif:{trip:true,promo:true,news:false}, unread:3,
+  };
+}
+function bid(s){const r=rng(hsh(s+Date.now()+Math.random()));const ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let o='';for(let i=0;i<7;i++)o+=ch[Math.floor(r()*ch.length)];return o}
+function load(){try{const v=JSON.parse(localStorage.getItem(KEY));return v&&v.user?v:null}catch(e){return null}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+S=load()||seed();
+// auto-complete trips that have arrived
+S.tickets.forEach(t=>{if(t.status==='active'&&t.legs.every(l=>dtOf(arrDate(l.t),l.t.arr%1440)<NOW))t.status='completed'});
+
+/* home search form */
+const H={trip:'one',from:'Apex Square',to:'Proxima',date:addD(TODAY,1),ret:addD(TODAY,4),cls:0,pax:1,sort:'time'};
+let B=null; // active booking draft
+
+/* ---------- theme ---------- */
+const prefersDark=()=>matchMedia('(prefers-color-scheme: dark)').matches;
+const isDark=()=>S.theme?S.theme==='dark':prefersDark();
+function applyTheme(){if(S.theme)document.documentElement.dataset.theme=S.theme;else delete document.documentElement.dataset.theme}
+applyTheme();
+
+/* ---------- router ---------- */
+const view=document.getElementById('view'), sb=document.getElementById('sb');
+let stack=[];
+function go(n,p={}){stack.push({n,p});render()}
+function back(){if(stack.length>1){stack.pop();render()}}
+function reset(n,p={}){stack=[{n,p}];render()}
+function swapTop(n,p={}){stack[stack.length-1]={n,p};render()}
+function rerender(){const b=view.querySelector('.body,.et-wrap');const y=b?b.scrollTop:0;render(true);const nb=view.querySelector('.body,.et-wrap');if(nb)nb.scrollTop=y}
+function render(keep){
+  closeOverlay();if(!keep)document.querySelector('.toast')?.remove();
+  const top=stack[stack.length-1];
+  view.innerHTML=SCR[top.n](top.p);
+  const light=['walk','welcome','signin','signup','forgot','otp','newpw'].includes(top.n);
+  sb.style.setProperty('--sbbg', light?'var(--bg)':top.n==='splash'?'var(--brand)':'var(--head)');
+  sb.style.setProperty('--sbink', light?'var(--ink)':'var(--head-ink)');
+  (AFTER[top.n]||(()=>{}))(top.p);
+  save();
+}
+const hd=(title,o={})=>`<header class="hd">${o.noBack?'<span></span>':`<button class="ibtn" onclick="back()" aria-label="Back">${ic('back',26,2)}</button>`}<div><h1>${title}</h1>${o.sub?`<span class="sub">${o.sub}</span>`:''}</div>${o.right||'<span></span>'}</header>`;
+const nav=on=>`<nav class="nav">${[['home','home','Home'],['tickets','ticket','My Ticket'],['wallet','wallet','My Wallet'],['account','user','Account']].map(([k,i,l])=>`<button class="${on===k?'on':''}" onclick="reset('${k}')">${ic(i,24,on===k?2.2:1.8)}${l}</button>`).join('')}</nav>`;
+
+/* ---------- overlays ---------- */
+function overlay(html,center){closeOverlay();const d=document.createElement('div');d.className='scrim'+(center?' center':'');d.id='ov';d.innerHTML=html;if(!center)d.addEventListener('click',e=>{if(e.target===d)closeOverlay()});document.getElementById('phone').appendChild(d)}
+function closeOverlay(){document.getElementById('ov')?.remove()}
+const sheet=(title,inner)=>overlay(`<div class="sheet" role="dialog" aria-label="${esc(title)}"><div class="grab"></div><h3>${title}</h3>${inner}</div>`);
+function modal({icon='check',title,text,actions,bad,spin}){
+  overlay(`<div class="modal" role="dialog"><div class="badge ${bad?'bad':''}">${ic(icon,54,2.4)}</div><h2 style="${bad?'color:var(--bad)':''}">${title}</h2><p class="muted" style="margin:0;line-height:1.55">${text}</p>${spin?'<div class="spin" style="margin-top:8px"></div>':''}${actions?`<div class="stack">${actions}</div>`:''}</div>`,true);
+}
+let tt;function toast(m){document.querySelector('.toast')?.remove();const d=document.createElement('div');d.className='toast';d.setAttribute('role','status');d.textContent=m;document.getElementById('phone').appendChild(d);clearTimeout(tt);tt=setTimeout(()=>d.remove(),2600)}
+
+/* ---------- shared bits ---------- */
+const opLogo=i=>`<span class="logo" style="background:${OPS[i].c}">${OPS[i].k}</span>`;
+function tripCard(t,{right='',click='',dis=false,tag=''}={}){
+  const op=OPS[t.op];
+  return `<${click?'button':'div'} class="trip card" ${click?`onclick="${click}"`:''} ${dis?'disabled':''}>
+    <div class="row trip-top">${opLogo(t.op)}<div class="grow"><b class="ell">${op.n}</b><small class="muted">${CLASSES[t.cls].n} · ${t.no}</small></div><div style="text-align:right">${right}</div></div>
+    <div class="trip-mid">
+      <div class="st"><b class="ell">${t.from}</b><span class="t num">${ftime(t.dep)}</span><small class="muted">${fdate(t.date)}</small></div>
+      <div class="tline"><span class="dash">${ic('trainfill',22)}</span><small class="muted xs">${fdur(t.dur)}</small></div>
+      <div class="st r"><b class="ell">${t.to}</b><span class="t num">${ftime(t.arr)}</span><small class="muted">${fdate(arrDate(t))}</small></div>
+    </div>${tag}</${click?'button':'div'}>`;
+}
+const seatLabel=s=>{const [c,x]=s.split('/');return `Carriage ${c.slice(1)} / ${x}`};
+const statusTag=s=>s==='active'?'<span class="tag">Paid</span>':s==='completed'?'<span class="tag ok">Completed</span>':'<span class="tag bad">Canceled</span>';
+function stationField(key,label){
+  const v=H[key];
+  return `<div class="fld"><label>${label}</label><button class="inp" onclick="pickStation('${key}')">${ic('train',22)}<span class="val ${v?'':'ph'}">${v||label}</span>${ic('down',20)}</button></div>`;
+}
+function pickStation(key,obj){
+  const target=obj?TF:H;
+  sheet(key==='station'?'Select Station':key==='from'?'Select Origin':'Select Destination',
+   `<div class="box">${ic('search',20)}<input id="stq" placeholder="Search station" oninput="filterSt(this.value)" autocomplete="off"></div>
+    <div class="list" id="stl">${STATIONS.map((s,i)=>`<button class="opt" data-n="${s.toLowerCase()}" onclick="setSt('${key}','${s}',${!!obj})"><span class="ib" style="width:40px;height:40px;padding:0;border:0">${ic('pin',20)}</span><span class="grow">${s}<br><small class="muted">${CODES[i]} · ${['Central','North','East','Harbour','West'][i%5]} District</small></span>${target[key]===s?`<span style="color:var(--brand)">${ic('check',22,2.4)}</span>`:''}</button>`).join('')}</div>`);
+}
+function filterSt(q){q=q.toLowerCase();document.querySelectorAll('#stl .opt').forEach(b=>b.hidden=!b.dataset.n.includes(q))}
+function setSt(key,s,isTool){const o=isTool?TF:H;const other=key==='from'?'to':key==='to'?'from':null;if(other&&o[other]===s)o[other]=o[key];o[key]=s;closeOverlay();rerender()}
+function pickClass(obj){const o=obj?TF:H;sheet('Select Train Class',`<div class="list">${CLASSES.map((c,i)=>`<button class="opt" onclick="${obj?'TF':'H'}.cls=${i};closeOverlay();rerender()"><span class="radio ${o.cls===i?'on':''}"></span><span class="grow">${c.n}<br><small class="muted">${['Standard seats, light snacks for sale','Wider seats, power outlets, priority boarding','Lie-flat recliners, lounge access, meal included'][i]}</small></span><small class="muted">×${c.m}</small></button>`).join('')}</div>`)}
+function pickPax(obj){
+  const o=obj?TF:H;
+  const draw=()=>`<div class="between card" style="box-shadow:none;background:var(--bg)"><span><b>Adult</b><br><small class="muted">Age 12 and over</small></span><div class="step"><button onclick="paxD(-1,${!!obj})" aria-label="Fewer">${ic('minus',18,2.4)}</button><b class="num" id="paxn" style="min-width:22px;text-align:center;font-size:18px">${o.pax}</b><button class="plus" onclick="paxD(1,${!!obj})" aria-label="More">${ic('plus',18,2.4)}</button></div></div><small class="muted" style="text-align:center">Up to 6 passengers per booking</small><button class="btn" onclick="closeOverlay();rerender()">Done</button>`;
+  sheet('Passengers',draw());
+}
+function paxD(d,obj){const o=obj?TF:H;o.pax=Math.min(6,Math.max(1,o.pax+d));document.getElementById('paxn').textContent=o.pax}
+
+/* ---------- screens ---------- */
+const SCR={}, AFTER={};
+
+SCR.splash=()=>`<div class="splash" style="--logo-cut:var(--brand)">${LOGO(120,'#fff')}<h1>Railify</h1><div class="spin"></div></div>`;
+AFTER.splash=()=>setTimeout(()=>{if(stack[0]?.n==='splash')reset(S.signed?'home':S.onboarded?'welcome':'walk',{i:0})},1300);
+
+const WALK=[
+ {t:'Book train tickets in a few taps',d:'Search routes, compare fares across operators and choose your own seat, all from one screen.',ico:'ticket',f:[['trainfill','Apex Sq → Proxima'],['dollar','From $40']]},
+ {t:'Your e-ticket lives on your phone',d:'Show the QR code at the gate. No printing, no ticket office queues, no lost paper.',ico:'qr',f:[['check','Gate 4 · Boarding'],['seat','Carriage 1 / B2']]},
+ {t:'Meals, alarms and live status',d:'Order food to your seat, follow your train stop by stop and get a nudge before your station.',ico:'food',f:[['live','On time'],['alarm','Alarm 10 min before']]},
+];
+SCR.walk=({i=0})=>{const w=WALK[i];return `<div class="scr" style="background:var(--bg)">
+  <div class="walk-art"><div class="disc">${ic(w.ico,110,1.3)}
+    <div class="fl" style="top:12%;left:-8%">${ic(w.f[0][0],18)}${w.f[0][1]}</div>
+    <div class="fl" style="bottom:12%;right:-6%">${ic(w.f[1][0],18)}${w.f[1][1]}</div></div></div>
+  <div style="padding:8px 28px 10px;text-align:center;display:flex;flex-direction:column;gap:14px">
+    <h2 style="font-size:30px;line-height:1.2">${w.t}</h2><p class="muted" style="margin:0;line-height:1.6;font-size:16px">${w.d}</p>
+    <div class="dots" style="margin:10px 0">${WALK.map((_,k)=>`<i class="${k===i?'on':''}"></i>`).join('')}</div></div>
+  <div class="foot" style="border:0;background:transparent">${i<2?`<button class="btn soft" onclick="S.onboarded=true;reset('welcome')">Skip</button><button class="btn" onclick="swapTop('walk',{i:${i+1}})">Next</button>`:`<button class="btn" onclick="S.onboarded=true;reset('welcome')">Get Started</button>`}</div></div>`};
+
+SCR.welcome=()=>`<div class="scr" style="background:var(--bg)"><div class="body" style="justify-content:center;align-items:center;text-align:center;gap:18px;padding:28px">
+  <div style="color:var(--brand);--logo-cut:var(--bg)">${LOGO(150)}</div><h2 style="font-size:32px">Railify</h2>
+  <p class="muted" style="margin:0;line-height:1.6;font-size:16px">Welcome! Create an account to start booking, or sign in if you already have one.</p>
+  <div class="stack" style="width:100%;margin-top:24px"><button class="btn" onclick="go('signup')">Sign up</button><button class="btn soft" onclick="go('signin')">Sign in</button></div>
+  <small class="muted" style="margin-top:18px">This is a working demo. Bookings and wallet changes are saved in this browser only.</small></div></div>`;
+
+const authHead=(t,d)=>`<div class="stack" style="gap:10px"><h2 style="font-size:30px">${t}</h2><p class="muted" style="margin:0;line-height:1.55">${d}</p></div>`;
+const field=(id,label,type,val,ico,ph='')=>`<div class="fld"><label for="${id}">${label}</label><div class="inp">${ic(ico,20)}<input id="${id}" type="${type}" value="${esc(val)}" placeholder="${ph}" autocomplete="off">${type==='password'?`<button type="button" onclick="const i=document.getElementById('${id}');i.type=i.type==='password'?'text':'password'" aria-label="Show password">${ic('eyeoff',20)}</button>`:''}</div></div>`;
+SCR.signin=()=>`<div class="scr" style="background:var(--bg)"><header class="hd" style="background:var(--bg);color:var(--ink)"><button class="ibtn" onclick="back()" aria-label="Back">${ic('back',26,2)}</button><span></span><span></span></header>
+ <form class="body" style="gap:26px" onsubmit="event.preventDefault();doSignIn()">${authHead('Welcome back 👋','Sign in to manage your tickets, wallet and passengers.')}
+  ${field('em','Email','email',S.user.email,'user')}${field('pw','Password','password','railify2026','shield')}
+  <label class="row" style="font-weight:600"><span class="check on" id="rm" role="checkbox" aria-checked="true" tabindex="0" onclick="this.classList.toggle('on')">${ic('check',14,3)}</span>Remember me</label>
+  <button type="button" class="link" style="text-align:center" onclick="go('forgot')">Forgot Password?</button>
+  <button class="btn" style="margin-top:auto">Sign in</button></form></div>`;
+function doSignIn(){const e=document.getElementById('em').value.trim();if(!/^\S+@\S+\.\S+$/.test(e))return toast('Enter an email address like name@example.com');if(document.getElementById('pw').value.length<6)return toast('Passwords have at least 6 characters');S.user.email=e;S.signed=true;modal({title:'Sign in Successful!',text:'Taking you to your home screen in a moment.',spin:true});setTimeout(()=>reset('home'),1500)}
+SCR.signup=()=>`<div class="scr" style="background:var(--bg)"><header class="hd" style="background:var(--bg);color:var(--ink)"><button class="ibtn" onclick="back()" aria-label="Back">${ic('back',26,2)}</button><span></span><span></span></header>
+ <form class="body" style="gap:24px" onsubmit="event.preventDefault();doSignUp()">${authHead('Join Railify today ✨','A few details and you can book your first trip.')}
+  ${field('nm','Full Name','text','','user','Your name')}${field('em','Email','email','','user','name@example.com')}${field('pw','Password','password','','shield','At least 6 characters')}
+  <button class="btn" style="margin-top:auto">Sign up</button></form></div>`;
+function doSignUp(){const n=document.getElementById('nm').value.trim(),e=document.getElementById('em').value.trim();if(n.length<2)return toast('Add your full name as it appears on your ID');if(!/^\S+@\S+\.\S+$/.test(e))return toast('Enter an email address like name@example.com');if(document.getElementById('pw').value.length<6)return toast('Use a password with at least 6 characters');S.user.name=n;S.user.email=e;S.signed=true;modal({icon:'user',title:'Sign up Successful!',text:'Your account is ready. Setting up your home screen.',spin:true});setTimeout(()=>reset('home'),1500)}
+SCR.forgot=()=>`<div class="scr" style="background:var(--bg)"><header class="hd" style="background:var(--bg);color:var(--ink)"><button class="ibtn" onclick="back()" aria-label="Back">${ic('back',26,2)}</button><span></span><span></span></header>
+ <form class="body" style="gap:26px" onsubmit="event.preventDefault();go('otp',{d:''})">${authHead('Reset your password 🔑','Enter the email on your account and we will send a 4-digit code.')}${field('em','Your Registered Email','email',S.user.email,'user')}<button class="btn" style="margin-top:auto">Send OTP Code</button></form></div>`;
+SCR.otp=({d=''})=>`<div class="scr" style="background:var(--bg)"><header class="hd" style="background:var(--bg);color:var(--ink)"><button class="ibtn" onclick="back()" aria-label="Back">${ic('back',26,2)}</button><span></span><span></span></header>
+ <div class="body" style="gap:26px">${authHead('Enter OTP Code 🔐',`Check your email inbox for the code we sent to ${esc(S.user.email)}. In this demo any 4 digits work.`)}
+ <div class="otp">${[0,1,2,3].map(k=>`<div class="${k===d.length?'on':''}">${d[k]||''}</div>`).join('')}</div>
+ <div style="margin-top:auto">${keypad(`otpKey`)}</div></div></div>`;
+const keypad=fn=>`<div class="pad">${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>k===''?'<span></span>':`<button onclick="${fn}('${k}')" aria-label="${k==='⌫'?'Delete':k}">${k}</button>`).join('')}</div>`;
+function otpKey(k){const p=stack.at(-1).p;let d=p.d||'';d=k==='⌫'?d.slice(0,-1):(d+k).slice(0,4);p.d=d;rerender();if(d.length===4)setTimeout(()=>swapTop('newpw'),250)}
+SCR.newpw=()=>`<div class="scr" style="background:var(--bg)"><header class="hd" style="background:var(--bg);color:var(--ink)"><button class="ibtn" onclick="back()" aria-label="Back">${ic('back',26,2)}</button><span></span><span></span></header>
+ <form class="body" style="gap:26px" onsubmit="event.preventDefault();newPw()">${authHead('Create New Password 🔒','Create your new password. If you forget it, you will need to reset it again.')}${field('p1','New Password','password','','shield')}${field('p2','Confirm New Password','password','','shield')}<button class="btn" style="margin-top:auto">Continue</button></form></div>`;
+function newPw(){const a=document.getElementById('p1').value,b=document.getElementById('p2').value;if(a.length<6)return toast('Use at least 6 characters');if(a!==b)return toast('The two passwords do not match');modal({icon:'shield',title:'Reset Password Successful!',text:'Your password has been changed. Sign in with your new password.',actions:`<button class="btn" onclick="reset('welcome');go('signin')">Go to Sign in</button>`})}
+
+/* home */
+const QA=[
+ ['ticket','Check Booking',"go('checkBooking')"],['resched','Re-Schedule',"go('pickTrip',{mode:'resched'})"],['cancel','Train Cancellation',"go('pickTrip',{mode:'cancel'})"],['food','Order Train Food',"go('pickTrip',{mode:'food'})"],
+ ['seat','Check Seat Availability',"go('tool',{k:'seats'})"],['live','Train Live Status',"go('tool',{k:'live'})"],['cal','Train Schedule',"go('tool',{k:'schedule'})"],['route','Train Route Information',"go('tool',{k:'route'})"],
+ ['dollar','Train Fare',"go('tool',{k:'fare'})"],['refund','Refund Calculation',"go('tool',{k:'refund'})"],['alarm','Station Alarm',"go('tool',{k:'alarm'})"],['box','Shipping Rates',"go('tool',{k:'ship'})"],
+];
+function greet(){const h=new Date().getHours();return h<12?'Good Morning! 👋':h<18?'Good Afternoon! 👋':'Good Evening! 👋'}
+function newsArt(n,i,h=170){
+  return `<div class="news-art" style="height:${h}px;background:linear-gradient(160deg,${n.hue} 0%,${n.hue}cc 45%,#0b1530 100%)">
+  <svg viewBox="0 0 400 170" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" aria-hidden="true">
+   <g opacity=".25" stroke="#fff" stroke-width="2"><path d="M-10 150 L410 ${95+i*8}"/><path d="M-10 165 L410 ${115+i*8}"/></g>
+   <g transform="translate(${30+i*20} ${40+i*4})"><path d="M0 70 C0 30 40 10 90 10 H270 C300 10 320 30 330 55 L340 80 H0Z" fill="#fff" opacity=".95"/><path d="M30 25 H110 L100 50 H18 C20 38 24 30 30 25Z" fill="#0b1530" opacity=".8"/><rect x="130" y="25" width="40" height="22" rx="4" fill="#0b1530" opacity=".55"/><rect x="180" y="25" width="40" height="22" rx="4" fill="#0b1530" opacity=".55"/><rect x="230" y="25" width="40" height="22" rx="4" fill="#0b1530" opacity=".55"/><path d="M0 62 H335" stroke="${n.hue}" stroke-width="6"/></g>
+   <g fill="#fff" opacity=".12"><circle cx="360" cy="30" r="40"/></g></svg></div>`;
+}
+function promoArt(p,i){
+  return `<div class="art" style="background:radial-gradient(circle at 85% 50%,var(--brand-soft) 0 34%,var(--brand-softer) 35%)"><b>${p.t}</b><small class="muted">${p.s}</small><span class="code"><span>CODE</span><span>${p.code}</span></span>
+   <svg style="position:absolute;right:18px;top:24px" width="96" height="104" viewBox="0 0 96 104" aria-hidden="true"><rect x="14" y="40" width="68" height="58" rx="6" fill="var(--brand)"/><rect x="8" y="28" width="80" height="18" rx="5" fill="var(--brand)" opacity=".85"/><rect x="42" y="28" width="12" height="70" fill="var(--surface)"/><path d="M48 28c-10-18-30-14-24-2 4 6 24 2 24 2Zm0 0c10-18 30-14 24-2-4 6-24 2-24 2Z" fill="none" stroke="var(--brand)" stroke-width="5"/><text x="48" y="80" text-anchor="middle" font-family="Urbanist,sans-serif" font-weight="800" font-size="18" fill="var(--surface)">${i?'10%':'25%'}</text></svg></div>`;
+}
+SCR.home=()=>`<div class="scr"><div class="body flush">
+ <section class="hero"><div class="row" style="position:relative;z-index:1;padding-top:8px"><span class="av">${initials(S.user.name)}</span><div class="grow"><small style="opacity:.85">${greet()}</small><div style="font-weight:700;font-size:19px" class="ell">${esc(S.user.name)}</div></div><button class="bell" onclick="go('notifications')" aria-label="Notifications">${ic('bell',22)}${S.unread?'<span class="dot"></span>':''}</button></div></section>
+ <form class="card search" onsubmit="event.preventDefault();startSearch()">
+  <div class="seg"><button type="button" class="${H.trip==='one'?'on':''}" onclick="H.trip='one';rerender()">One-Way</button><button type="button" class="${H.trip==='round'?'on':''}" onclick="H.trip='round';rerender()">Round Trip</button></div>
+  <div class="row" style="align-items:stretch"><div class="grow stack" style="gap:16px">${stationField('from','Origin')}${stationField('to','Destination')}</div><button type="button" class="swap" onclick="[H.from,H.to]=[H.to,H.from];rerender()" aria-label="Swap origin and destination">${ic('swap',20,2)}</button></div>
+  <div class="${H.trip==='round'?'two':''}">
+   <div class="fld"><label for="dd">Departure Date</label><label class="inp">${ic('cal',20)}<input id="dd" type="date" min="${TODAY}" value="${H.date}" onchange="H.date=this.value;if(H.ret<H.date)H.ret=H.date;rerender()"></label></div>
+   ${H.trip==='round'?`<div class="fld"><label for="rd">Return Date</label><label class="inp">${ic('cal',20)}<input id="rd" type="date" min="${H.date}" value="${H.ret}" onchange="H.ret=this.value"></label></div>`:''}</div>
+  <div class="two"><div class="fld"><label>Train Class</label><button type="button" class="inp" onclick="pickClass()">${ic('class',20)}<span class="val">${CLASSES[H.cls].n}</span>${ic('down',18)}</button></div>
+   <div class="fld"><label>Passenger</label><button type="button" class="inp" onclick="pickPax()">${ic('user',20)}<span class="val">${H.pax} Adult${H.pax>1?'s':''}</span>${ic('down',18)}</button></div></div>
+  <button class="btn">Search Trains</button></form>
+ <div style="padding:20px"><div class="card qa">${QA.map(([i,l,a])=>`<button onclick="${a}"><span class="ico">${ic(i,24)}</span>${l}</button>`).join('')}</div></div>
+ <div style="padding:4px 20px" class="stack"><div class="sec-h"><h2>Special Discounts for you</h2></div>
+  <div class="hscroll">${PROMOS.map((p,i)=>`<button class="promo" onclick="go('promo',{i:${i}})">${promoArt(p,i)}<div class="bot"><div class="grow"><b class="ell" style="display:block;font-size:16px">${p.t}</b><small class="muted">${p.s}</small></div><span style="color:var(--brand)">${ic('right',22,2.2)}</span></div></button>`).join('')}</div></div>
+ <div style="padding:8px 20px 24px" class="stack"><div class="sec-h"><h2>Our News &amp; Stories</h2><button class="link" onclick="go('newsList')" aria-label="All news">${ic('arrow',24,2.2)}</button></div>
+  <div class="hscroll">${NEWS.map((n,i)=>`<button class="promo" onclick="go('news',{i:${i}})">${newsArt(n,i)}<div class="bot" style="align-items:flex-start"><div class="grow"><b style="display:block;font-size:16px;line-height:1.3">${n.t}</b><small class="muted">${n.ago}</small></div></div></button>`).join('')}</div></div>
+ </div>${nav('home')}</div>`;
+function startSearch(){
+  if(!H.from||!H.to)return toast('Choose both an origin and a destination');
+  if(H.from===H.to)return toast('Origin and destination need to be different stations');
+  if(H.trip==='round'&&H.ret<H.date)return toast('The return date has to be on or after the departure date');
+  B={trip:H.trip,from:H.from,to:H.to,date:H.date,ret:H.ret,cls:H.cls,pax:H.pax,legs:[],seats:[[],[]],payment:'wallet',coupon:null,names:[S.user.name,...S.passengers].slice(0,H.pax)};
+  go('results',{leg:0});
+}
+
+/* results */
+SCR.results=({leg=0,mode,tid})=>{
+  const resched=mode==='resched', tk=resched?S.tickets.find(t=>t.id===tid):null;
+  const src=resched?{from:tk.legs[0].t.from,to:tk.legs[0].t.to,cls:tk.cls}:B;
+  const key=resched?'rdate':leg?'ret':'date'; const holder=resched?stack.at(-1).p:B;
+  if(resched&&!holder.rdate)holder.rdate=addD(tk.legs[0].t.date,1);
+  const date=holder[key], from=leg?src.to:src.from, to=leg?src.from:src.to;
+  let list=genTrains(from,to,date,src.cls);
+  if(H.sort==='price')list=[...list].sort((a,b)=>a.price-b.price);
+  if(H.sort==='dur')list=[...list].sort((a,b)=>a.dur-b.dur);
+  const strip=[-2,-1,0,1,2].map(o=>addD(date,o));
+  return `<div class="scr">${hd(resched?'Select New Schedule':leg?'Select Return':'Search Results',{sub:`${from} → ${to}`,right:`<button class="ibtn" onclick="sortSheet()" aria-label="Sort">${ic('filter',24,2)}</button>`})}
+  <div class="datestrip">${strip.map(d=>{const x=parseD(d),past=d<TODAY;return `<button class="${d===date?'on':''}" ${past?'disabled style="opacity:.35"':''} onclick="setResDate('${key}','${d}')">${DOW[x.getDay()]}<b class="num">${x.getDate()}</b></button>`}).join('')}</div>
+  <div class="body">${list.map(t=>{const gone=departed(t),full=!t.seats;return tripCard(t,{click:gone||full?'':(resched?`reschedPick(${R(t)})`:`pickTrain(${leg},${R(t)})`),dis:gone||full,right:`<div class="row" style="gap:8px;justify-content:flex-end"><small class="xs" style="color:${gone?'var(--muted)':full?'var(--bad)':'var(--ok)'};font-weight:700">${gone?'Departed':full?'Sold out':t.seats<10?`${t.seats} left`:'Available'}</small><span class="price num">${money(t.price)}</span></div>`})}).join('')}</div></div>`;
+};
+function setResDate(key,d){if(key==='rdate')stack.at(-1).p.rdate=d;else{B[key]=d;if(key==='date'&&B.ret<d)B.ret=d}rerender()}
+function sortSheet(){sheet('Sort Trains',`<div class="list">${[['time','Earliest departure'],['price','Lowest price'],['dur','Shortest journey']].map(([k,l])=>`<button class="opt" onclick="H.sort='${k}';closeOverlay();rerender()"><span class="radio ${H.sort===k?'on':''}"></span>${l}</button>`).join('')}</div>`)}
+function pickTrain(leg,ri){B.legs[leg]=REG[ri];B.seats[leg]=[];if(B.trip==='round'&&leg===0){if(B.ret<B.date)B.ret=B.date;go('results',{leg:1})}else go('booking')}
+
+/* booking details */
+SCR.booking=()=>{
+  const opts=[S.user.name,...S.passengers];
+  return `<div class="scr">${hd('Booking Details')}<div class="body">
+  <h3>Trip${B.legs.length>1?'s':''}</h3>${B.legs.map((t,i)=>`${B.legs.length>1?`<small class="muted" style="font-weight:700;margin-bottom:-8px">${i?'RETURN':'DEPARTURE'}</small>`:''}${tripCard(t,{right:`<span class="price num">${money(t.price)}</span>`})}`).join('')}
+  <h3 style="margin-top:6px">Passengers</h3>
+  ${B.names.map((n,i)=>`<div class="card stack" style="gap:10px"><div class="between"><b>Passenger ${i+1}</b><span class="tag soft">Adult</span></div><label class="box">${ic('user',20)}<select aria-label="Passenger ${i+1}" onchange="B.names[${i}]=this.value">${opts.map(o=>`<option ${o===n?'selected':''}>${esc(o)}</option>`).join('')}</select></label></div>`).join('')}
+  <button class="btn ghost sm" onclick="go('passengerEdit',{i:-1})">${ic('plus',18,2.4)} Add a new passenger</button>
+  <h3 style="margin-top:6px">Contact Details</h3>
+  <div class="card stack"><div class="kv"><span>Name</span><span>${esc(S.user.name)}</span></div><div class="kv"><span>Email</span><span class="ell">${esc(S.user.email)}</span></div><div class="kv"><span>Phone</span><span>${esc(S.user.phone)}</span></div></div>
+  <small class="muted">Your e-ticket and receipt go to this email.</small></div>
+  <div class="foot"><button class="btn" onclick="if(new Set(B.names).size<B.names.length)return toast('Each passenger needs a different name');go('seat',{leg:0,car:1})">Continue</button></div></div>`;
+};
+
+/* seat */
+const occupied=(t,car,s)=>rng(hsh(t.no+t.date+car+s))()<.42;
+SCR.seat=({leg=0,car=1})=>{
+  const t=B.legs[leg], sel=B.seats[leg], need=B.pax;
+  let g='<span class="h">A</span><span class="h">B</span><span></span><span class="h">C</span><span class="h">D</span>';
+  for(let r=1;r<=10;r++){['A','B','',`C`,'D'].forEach(c=>{if(!c){g+=`<span class="rown">${r}</span>`;return}const id=`C${car}/${c}${r}`,occ=occupied(t,car,c+r),on=sel.includes(id);g+=`<button class="seat ${occ?'occ':''} ${on?'sel':''}" ${occ?'disabled aria-disabled="true"':''} aria-label="Seat ${c}${r}${occ?', taken':''}" onclick="toggleSeat(${leg},'${id}')">${on?ic('check',20,2.6):c+r}</button>`})}
+  return `<div class="scr">${hd('Select Seat',{sub:`${B.legs.length>1?(leg?'Return · ':'Departure · '):''}${t.from} → ${t.to}`})}
+  <div style="padding:16px 20px 0;background:var(--surface)" class="stack"><div class="pills">${[1,2,3,4].map(c=>`<button class="pill ${c===car?'on':''}" onclick="swapTop('seat',{leg:${leg},car:${c}})">Carriage ${c}</button>`).join('')}</div>
+  <div class="legend" style="padding:6px 0 14px"><span><i style="background:var(--brand)"></i>Selected</span><span><i style="background:var(--seat-occ)"></i>Occupied</span><span><i style="background:var(--seat-free)"></i>Available</span></div></div>
+  <div class="body" style="background:var(--surface)"><div class="seatgrid">${g}</div></div>
+  <div class="foot" style="flex-direction:column;align-items:stretch;gap:10px"><div class="between"><small class="muted">${sel.length} of ${need} seat${need>1?'s':''} selected</small><small style="font-weight:700">${sel.map(seatLabel).join(', ')||'Tap a seat'}</small></div>
+  <button class="btn" ${sel.length<need?'disabled':''} onclick="${leg+1<B.legs.length?`go('seat',{leg:${leg+1},car:1})`:`go('payment',{flow:'book'})`}">Continue</button></div></div>`;
+};
+function toggleSeat(leg,id){const s=B.seats[leg];const i=s.indexOf(id);if(i>=0)s.splice(i,1);else{s.push(id);if(s.length>B.pax)s.shift()}rerender()}
+
+/* payment method */
+SCR.payment=({flow})=>{
+  const cur=flow==='book'?B.payment:flow==='food'?FOOD.payment:TOP.payment;
+  const items=[...PMS,...S.cards.map(c=>({id:'card'+c.last,n:`${c.brand} •••• ${c.last}`,ico:'card'}))];
+  return `<div class="scr">${hd('Select Payment Method')}<div class="body">
+  ${items.filter(p=>!(flow==='topup'&&p.id==='wallet')).map(p=>`<button class="card row" onclick="setPay('${flow}','${p.id}')"><span class="ib" style="padding:0;border:0">${ic(p.ico,22)}</span><span class="grow"><b style="font-size:16px">${p.n}</b>${p.id==='wallet'?`<br><small class="muted num">Balance ${money(S.balance)}</small>`:''}</span><span class="radio ${cur===p.id?'on':''}"></span></button>`).join('')}
+  <button class="btn soft" onclick="go('addCard')">${ic('plus',20,2.4)} Add New Payment</button></div>
+  <div class="foot"><button class="btn" onclick="${flow==='book'?"go('review')":flow==='food'?"go('foodCheckout')":"topupPay()"}">Continue</button></div></div>`;
+};
+function setPay(flow,id){if(flow==='book')B.payment=id;else if(flow==='food')FOOD.payment=id;else TOP.payment=id;rerender()}
+const pmName=id=>id.startsWith('card')?`Card •••• ${id.slice(4)}`:(PMS.find(p=>p.id===id)||{n:id}).n;
+
+/* review */
+function price(){const sub=B.legs.reduce((a,t)=>a+t.price,0)*B.pax, fee=2*B.pax*B.legs.length;let disc=0;if(B.coupon){const c=COUPONS[B.coupon];disc=Math.min(c.max,+(sub*c.pct/100).toFixed(2))}return {sub,fee,disc,total:+(sub+fee-disc).toFixed(2)}}
+SCR.review=()=>{const p=price();return `<div class="scr">${hd('Review Summary')}<div class="body">
+  ${B.legs.map((t,i)=>`${B.legs.length>1?`<small class="muted" style="font-weight:700;margin-bottom:-8px">${i?'RETURN':'DEPARTURE'}</small>`:''}${tripCard(t)}`).join('')}
+  <div class="card stack">${B.names.map((n,i)=>`<div class="kv"><span>Passenger ${i+1}</span><span>${esc(n)}</span></div><div class="kv"><span>Seat${B.legs.length>1?'s':''}</span><span>${B.seats.slice(0,B.legs.length).map(s=>seatLabel(s[i])).join(' · ')}</span></div>${i<B.names.length-1?'<div class="hr"></div>':''}`).join('')}</div>
+  <div class="card stack"><b>Discount code</b>${B.coupon?`<div class="between"><span class="row"><span class="tag ok">${B.coupon}</span><small class="muted">${COUPONS[B.coupon].label}</small></span><button class="link sm" onclick="B.coupon=null;rerender()">Remove</button></div>`:`<div class="row"><label class="box grow" style="min-height:48px">${ic('gift',20)}<input id="cp" placeholder="e.g. 8XKSD" style="text-transform:uppercase;padding:10px 0"></label><button class="btn sm" style="width:auto;padding:0 18px" onclick="applyCoupon()">Apply</button></div>`}</div>
+  <div class="card stack"><div class="kv"><span>Price (${CLASSES[B.cls].n}) × ${B.pax}${B.legs.length>1?' × 2 legs':''}</span><span class="num">${money(p.sub)}</span></div><div class="kv"><span>Service fee</span><span class="num">${money(p.fee)}</span></div>${p.disc?`<div class="kv"><span>Discount</span><span class="num" style="color:var(--ok)">-${money(p.disc)}</span></div>`:''}<div class="hr"></div><div class="kv" style="font-size:17px"><span style="color:var(--ink);font-weight:700">Total Price</span><span class="num price">${money(p.total)}</span></div></div>
+  <div class="card between"><span class="row"><span class="ib" style="padding:0;border:0;width:42px;height:42px">${ic(B.payment==='wallet'?'wallet':'card',20)}</span><span><b>${pmName(B.payment)}</b>${B.payment==='wallet'?`<br><small class="muted num">Balance ${money(S.balance)}</small>`:''}</span></span><button class="link" onclick="back()">Change</button></div>
+  ${B.payment==='wallet'&&S.balance<p.total?`<div class="card" style="background:var(--bad-soft);color:var(--bad);box-shadow:none;font-weight:600">Your wallet has ${money(S.balance)}. Top up ${money(p.total-S.balance)} or choose another payment method.</div>`:''}
+  </div><div class="foot"><button class="btn" onclick="go('pin',{d:'',flow:'book'})" ${B.payment==='wallet'&&S.balance<p.total?'disabled':''}>Confirm Booking · ${money(p.total)}</button></div></div>`};
+function applyCoupon(){const v=document.getElementById('cp').value.trim().toUpperCase();if(!v)return toast('Type a discount code first');if(!COUPONS[v])return toast(`${v} isn't a valid code. Try 8XKSD from Special Discounts.`);B.coupon=v;rerender();toast(`${v} applied`)}
+
+/* pin */
+SCR.pin=({d='',flow})=>`<div class="scr">${hd('Confirm PIN')}<div class="body" style="gap:28px;justify-content:center">
+  <p style="text-align:center;margin:0;font-size:17px;line-height:1.5">Enter your PIN to confirm ${flow==='book'?'this booking':flow==='food'?'your food order':flow==='resched'?'the new schedule':'this payment'}</p>
+  <div class="otp" style="padding:0 20px">${[0,1,2,3].map(k=>`<div class="${k===d.length?'on':''}">${d[k]?'●':''}</div>`).join('')}</div>
+  <small class="muted" style="text-align:center">Demo: any 4 digits work.</small></div>
+  <div style="padding:0 20px 20px">${keypad('pinKey')}</div></div>`;
+function pinKey(k){const p=stack.at(-1).p;let d=p.d||'';d=k==='⌫'?d.slice(0,-1):(d+k).slice(0,4);p.d=d;rerender();if(d.length===4)setTimeout(()=>({book:commitBooking,food:commitFood,resched:commitResched,topup:commitTopup})[p.flow](),250)}
+function addTx(n,a,k){S.tx.unshift({n,d:TODAY,tm:clockNow(),a:+a.toFixed(2),k})}
+function commitBooking(){
+  const p=price();
+  if(B.payment==='wallet'){if(S.balance<p.total){back();return toast('Not enough in your wallet. Top up or pick another method.')}S.balance=+(S.balance-p.total).toFixed(2)}
+  const t={id:bid(B.from+B.to),legs:B.legs.map((t,i)=>({t,seats:B.seats[i].slice()})),pax:B.names.slice(),cls:B.cls,payment:B.payment,...p,status:'active',booked:TODAY,trip:B.trip,coupon:B.coupon};
+  S.tickets.unshift(t);
+  addTx(B.trip==='round'?'Round Trip Ticket':`${B.from} - ${B.to}`,-p.total,'train');
+  S.unread++; NOTES.unshift({t:'Ticket booked',d:`${B.from} → ${B.to} on ${fdate(B.legs[0].date)}. Booking ID ${t.id}.`,ico:'ticket',when:'Just now'});
+  B=null; reset('home');
+  modal({title:'Ticket Booking Successful!',text:`Booking ID <b style="color:var(--ink)">${t.id}</b>. You'll find it under My Ticket → Active.`,actions:`<button class="btn" onclick="reset('tickets');go('eticket',{id:'${t.id}'})">View E-Ticket</button><button class="btn soft" onclick="closeOverlay()">Back to Home</button>`});
+}
+
+/* e-ticket */
+SCR.eticket=({id,leg=0,px=0})=>{
+  const tk=S.tickets.find(t=>t.id===id), L=tk.legs[leg], t=L.t, op=OPS[t.op];
+  return `<div class="scr">${hd('E-Ticket',{right:`<button class="ibtn" onclick="copyTxt('${tk.id}')" aria-label="Copy booking ID">${ic('copy',22)}</button>`})}<div class="et-wrap stack">
+  ${(tk.legs.length>1||tk.pax.length>1)?`<div class="pills">${tk.legs.length>1?tk.legs.map((_,i)=>`<button class="pill ${i===leg?'on':''}" style="border-color:#fff;${i===leg?'background:#fff;color:var(--brand)':'color:#fff'}" onclick="swapTop('eticket',{id:'${id}',leg:${i},px:${px}})">${i?'Return':'Departure'}</button>`).join(''):''}${tk.pax.length>1?tk.pax.map((n,i)=>`<button class="pill ${i===px?'on':''}" style="border-color:#fff;${i===px?'background:#fff;color:var(--brand)':'color:#fff'}" onclick="swapTop('eticket',{id:'${id}',leg:${leg},px:${i}})">${esc(n.split(' ')[0])}</button>`).join(''):''}</div>`:''}
+  <div class="et"><div class="qrz"><div class="qr" id="qr" role="img" aria-label="QR code for booking ${tk.id}"></div><small class="muted" style="text-align:center">Scan this QR code at the gate before boarding</small></div>
+   <div class="notch"><i></i></div>
+   <div class="det"><div class="row">${opLogo(t.op)}<div class="grow"><b>${op.n}</b><br><small class="muted">${CLASSES[tk.cls].n}</small></div><div style="text-align:right"><b class="num" style="font-size:18px;letter-spacing:.04em">${tk.id}</b><br><small class="muted">Booking ID</small></div></div>
+   <div class="trip-mid"><div class="st"><b class="ell">${t.from}</b><span class="t num">${ftime(t.dep)}</span><small class="muted">${fdate(t.date)}</small></div><div class="tline"><span class="dash">${ic('trainfill',22)}</span><small class="muted xs">${fdur(t.dur)}</small></div><div class="st r"><b class="ell">${t.to}</b><span class="t num">${ftime(t.arr)}</span><small class="muted">${fdate(arrDate(t))}</small></div></div>
+   <div class="hr"></div>
+   <div class="kv"><span>Passenger</span><span>${esc(tk.pax[px])}</span></div>${px===0?`<div class="kv"><span>ID Number</span><span class="num">${S.user.idNo}</span></div>`:''}<div class="kv"><span>Passenger Type</span><span>Adult (General)</span></div><div class="kv"><span>Train</span><span>${t.no}</span></div><div class="kv"><span>Seat</span><span>${seatLabel(L.seats[px])}</span></div><div class="kv"><span>Status</span><span>${statusTag(tk.status)}</span></div></div></div>
+  <button class="btn" style="background:#fff;color:var(--brand);box-shadow:none" onclick="go('ticketDetail',{id:'${id}'})">View Transaction Details</button></div></div>`;
+};
+AFTER.eticket=({id,leg=0,px=0})=>{
+  const el=document.getElementById('qr'), txt=`RAILIFY|${id}|L${leg}|P${px}`;
+  if(window.QRCode){try{new QRCode(el,{text:txt,width:240,height:240,colorDark:'#111111',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});return}catch(e){}}
+  const c=document.createElement('canvas');c.width=c.height=29;const x=c.getContext('2d'),r=rng(hsh(txt));x.fillStyle='#fff';x.fillRect(0,0,29,29);x.fillStyle='#111';
+  for(let i=0;i<29;i++)for(let j=0;j<29;j++)if(r()<.5)x.fillRect(i,j,1,1);
+  [[0,0],[22,0],[0,22]].forEach(([a,b])=>{x.fillStyle='#fff';x.fillRect(a-1<0?a:a-1,b-1<0?b:b-1,8,8);x.fillStyle='#111';x.fillRect(a,b,7,7);x.fillStyle='#fff';x.fillRect(a+1,b+1,5,5);x.fillStyle='#111';x.fillRect(a+2,b+2,3,3)});
+  el.appendChild(c);
+};
+function copyTxt(s){try{navigator.clipboard.writeText(s).then(()=>toast(`Copied ${s}`),()=>toast(`Booking ID: ${s}`))}catch(e){toast(`Booking ID: ${s}`)}}
+
+/* transaction details */
+SCR.ticketDetail=({id})=>{
+  const tk=S.tickets.find(t=>t.id===id); if(!tk)return SCR.empty('Ticket not found');
+  const order=S.orders.filter(o=>o.tid===id&&o.status==='active');
+  return `<div class="scr">${hd('Transaction Details')}<div class="body">
+  <div class="card stack"><div class="between"><span><small class="muted">Booking ID</small><br><b class="num" style="font-size:20px;letter-spacing:.04em">${tk.id}</b></span><button class="ibtn" style="color:var(--brand)" onclick="copyTxt('${tk.id}')" aria-label="Copy">${ic('copy',22)}</button></div><div class="kv"><span>Booked on</span><span>${fdate(tk.booked)}</span></div><div class="kv"><span>Status</span><span>${statusTag(tk.status)}</span></div></div>
+  ${tk.legs.map((l,i)=>`${tk.legs.length>1?`<small class="muted" style="font-weight:700;margin-bottom:-8px">${i?'RETURN':'DEPARTURE'}</small>`:''}${tripCard(l.t)}`).join('')}
+  <div class="card stack">${tk.pax.map((n,i)=>`<div class="kv"><span>Passenger ${i+1}</span><span>${esc(n)}</span></div><div class="kv"><span>Seat</span><span>${tk.legs.map(l=>seatLabel(l.seats[i])).join(' · ')}</span></div>`).join('<div class="hr"></div>')}</div>
+  <div class="card stack"><div class="kv"><span>Price</span><span class="num">${money(tk.sub)}</span></div><div class="kv"><span>Service fee</span><span class="num">${money(tk.fee)}</span></div>${tk.disc?`<div class="kv"><span>Discount${tk.coupon?' ('+tk.coupon+')':''}</span><span class="num" style="color:var(--ok)">-${money(tk.disc)}</span></div>`:''}<div class="hr"></div><div class="kv"><span style="color:var(--ink);font-weight:700">Total Price</span><span class="num price">${money(tk.total)}</span></div><div class="kv"><span>Paid with</span><span>${pmName(tk.payment)}</span></div>${tk.refund!=null?`<div class="kv"><span>Refunded</span><span class="num" style="color:var(--ok)">${money(tk.refund)}</span></div>`:''}</div>
+  ${order.length?`<div class="card stack"><b>Food on this trip</b>${order.map(o=>`<button class="between" onclick="go('orderDetail',{id:'${o.id}'})"><small>${o.items.map(([m,q])=>`${q}× ${MENU[m].n}`).join(', ')}</small>${ic('right',18)}</button>`).join('')}</div>`:''}
+  </div>${tk.status==='active'?`<div class="foot" style="flex-wrap:wrap"><button class="btn" onclick="go('eticket',{id:'${id}'})">Show E-Ticket</button><div class="row" style="width:100%"><button class="btn soft sm" onclick="go('foodMenu',{tid:'${id}'})">${ic('food',18)} Food</button><button class="btn soft sm" onclick="go('results',{mode:'resched',tid:'${id}'})">${ic('resched',18)} Re-schedule</button><button class="btn soft sm" style="color:var(--bad)" onclick="cancelSheet('${id}')">${ic('cancel',18)} Cancel</button></div></div>`:''}</div>`;
+};
+SCR.empty=m=>`<div class="scr">${hd('')}<div class="empty"><div class="ib">${ic('info',40)}</div><b>${m}</b></div></div>`;
+
+/* cancel */
+function refundFor(tk){const dep=dtOf(tk.legs[0].t.date,tk.legs[0].t.dep), h=(dep-new Date())/36e5;const pct=h>24?75:h>2?50:0;return {pct,h,amt:+(tk.total*pct/100).toFixed(2)}}
+const REASONS=['Change of plans','Found a faster route','Booked the wrong date','Illness or emergency','Train schedule changed','Other'];
+function cancelSheet(id){const tk=S.tickets.find(t=>t.id===id), r=refundFor(tk);
+  sheet('Cancel Trip',`<p class="muted" style="margin:0;text-align:center">Why are you canceling?</p><div class="list" id="rs">${REASONS.map((x,i)=>`<button class="opt" onclick="document.querySelectorAll('#rs .radio').forEach(e=>e.classList.remove('on'));this.querySelector('.radio').classList.add('on')"><span class="radio ${i===0?'on':''}"></span>${x}</button>`).join('')}</div>
+  <div class="card" style="background:var(--bg);box-shadow:none" ><div class="kv"><span>Refund (${r.pct}% · ${r.h>24?'more than 24h':r.h>2?'2–24h':'under 2h'} before departure)</span><span class="num" style="color:var(--ok)">${money(r.amt)}</span></div><small class="muted">Refunds go to My Wallet straight away.</small></div>
+  <div class="row"><button class="btn soft" onclick="closeOverlay()">Keep Trip</button><button class="btn danger" onclick="doCancel('${id}')">Cancel Trip</button></div>`)}
+function doCancel(id){const tk=S.tickets.find(t=>t.id===id), r=refundFor(tk);tk.status='canceled';tk.refund=r.amt;S.balance=+(S.balance+r.amt).toFixed(2);if(r.amt)addTx(`Refund: ${tk.legs[0].t.from} - ${tk.legs[0].t.to}`,r.amt,'refund');
+  S.orders.filter(o=>o.tid===id&&o.status==='active').forEach(o=>{o.status='canceled';if(o.payment==='wallet'||!o.payment){S.balance=+(S.balance+o.total).toFixed(2);addTx('Refund: Train Food',o.total,'refund')}});
+  reset('tickets'); stack[0].p={tab:'canceled'}; render();
+  modal({icon:'cancel',title:'Trip Canceled',text:`Booking ${id} is canceled. ${r.amt?money(r.amt)+' is back in your wallet.':'This trip was too close to departure for a refund.'}`,actions:`<button class="btn" onclick="closeOverlay()">OK</button>`})}
+
+/* pick trip (for cancel / reschedule / food) */
+SCR.pickTrip=({mode})=>{const list=S.tickets.filter(t=>t.status==='active');
+  const title={cancel:'Select Trip to Cancel',resched:'Select Trip to Re-Schedule',food:'Select Trip to Order Food'}[mode];
+  return `<div class="scr">${hd(title)}<div class="body">${list.length?list.map(tk=>tripCard(tk.legs[0].t,{click:mode==='cancel'?`cancelSheet('${tk.id}')`:mode==='resched'?`go('results',{mode:'resched',tid:'${tk.id}'})`:`go('foodMenu',{tid:'${tk.id}'})`,right:`<span class="tag soft num">${tk.id}</span>`})).join(''):emptyState('ticket','No active trips','Book a trip from Home and it will show up here.')}</div></div>`};
+const emptyState=(i,t,d)=>`<div class="empty"><div class="ib">${ic(i,40)}</div><b style="color:var(--ink);font-size:18px">${t}</b><span>${d}</span></div>`;
+
+/* reschedule */
+let RS=null;
+function reschedPick(ri){const tid=stack.at(-1).p.tid, tk=S.tickets.find(t=>t.id===tid), nt=REG[ri];const diff=(nt.price-tk.legs[0].t.price)*tk.pax.length;RS={tid,nt,diff};
+  sheet('Confirm New Schedule',`${tripCard(nt)}<div class="card" style="background:var(--bg);box-shadow:none"><div class="kv"><span>${diff>=0?'Fare difference to pay':'Fare difference refunded'}</span><span class="num" style="color:${diff>0?'var(--bad)':'var(--ok)'}">${money(Math.abs(diff))}</span></div><small class="muted">Settled with My Wallet. Your seats stay the same.</small></div><button class="btn" ${diff>S.balance?'disabled':''} onclick="go('pin',{d:'',flow:'resched'})">${diff>S.balance?'Wallet balance too low':'Confirm Re-Schedule'}</button>`)}
+function commitResched(){const tk=S.tickets.find(t=>t.id===RS.tid);tk.legs[0].t=RS.nt;S.balance=+(S.balance-RS.diff).toFixed(2);tk.total=+(tk.total+RS.diff).toFixed(2);tk.sub+=RS.diff;if(RS.diff)addTx(`Re-schedule ${tk.id}`,-RS.diff,RS.diff>0?'train':'refund');
+  reset('tickets');go('ticketDetail',{id:tk.id});modal({icon:'resched',title:'Re-Schedule Successful!',text:`Your trip now departs ${fdateS(RS.nt.date)} at ${ftime(RS.nt.dep)}.`,actions:`<button class="btn" onclick="closeOverlay()">OK</button>`})}
+
+/* food */
+let FOOD=null;
+SCR.foodMenu=({tid})=>{if(!FOOD||FOOD.tid!==tid)FOOD={tid,q:{},payment:'wallet'};const tk=S.tickets.find(t=>t.id===tid),count=Object.values(FOOD.q).reduce((a,b)=>a+b,0),sum=Object.entries(FOOD.q).reduce((a,[m,q])=>a+MENU[m].p*q,0);
+  return `<div class="scr">${hd('Order Food',{sub:`${tk.legs[0].t.no} · ${fdateS(tk.legs[0].t.date)}`})}<div class="body">
+  <div class="card row" style="background:var(--brand-soft);box-shadow:none;color:var(--brand)">${ic('info',22)}<small style="font-weight:600">Delivered to ${seatLabel(tk.legs[0].seats[0])} about 30 minutes after departure.</small></div>
+  ${MENU.map((m,i)=>`<div class="card food"><div class="fi" style="background:${m.c}">${initials(m.n)}</div><div style="min-width:0"><b style="display:block">${m.n}</b><small class="muted">${m.d}</small><div class="price num" style="font-size:16px;margin-top:4px">${money(m.p)}</div></div>
+   <div class="step">${FOOD.q[i]?`<button onclick="fq(${i},-1)" aria-label="Remove one">${ic('minus',16,2.6)}</button><b class="num">${FOOD.q[i]}</b>`:''}<button class="plus" onclick="fq(${i},1)" aria-label="Add ${m.n}">${ic('plus',16,2.6)}</button></div></div>`).join('')}</div>
+  <div class="foot"><button class="btn" ${count?'':'disabled'} onclick="go('payment',{flow:'food'})">${count?`Checkout · ${count} item${count>1?'s':''} · ${money(sum)}`:'Add something to order'}</button></div></div>`};
+function fq(i,d){FOOD.q[i]=Math.max(0,(FOOD.q[i]||0)+d);if(!FOOD.q[i])delete FOOD.q[i];rerender()}
+SCR.foodCheckout=()=>{const items=Object.entries(FOOD.q),sub=items.reduce((a,[m,q])=>a+MENU[m].p*q,0),fee=1.5,total=sub+fee;FOOD.total=total;
+  return `<div class="scr">${hd('Checkout Orders')}<div class="body"><div class="card stack">${items.map(([m,q])=>`<div class="kv"><span>${q}× ${MENU[m].n}</span><span class="num">${money(MENU[m].p*q)}</span></div>`).join('')}<div class="hr"></div><div class="kv"><span>Delivery to seat</span><span class="num">${money(fee)}</span></div><div class="kv"><span style="color:var(--ink);font-weight:700">Total</span><span class="price num">${money(total)}</span></div></div>
+  <div class="card between"><span><b>${pmName(FOOD.payment)}</b>${FOOD.payment==='wallet'?`<br><small class="muted num">Balance ${money(S.balance)}</small>`:''}</span><button class="link" onclick="back()">Change</button></div></div>
+  <div class="foot"><button class="btn" ${FOOD.payment==='wallet'&&S.balance<total?'disabled':''} onclick="go('pin',{d:'',flow:'food'})">Place Order · ${money(total)}</button></div></div>`};
+function commitFood(){if(FOOD.payment==='wallet')S.balance=+(S.balance-FOOD.total).toFixed(2);const o={id:'FD'+bid('f').slice(2),tid:FOOD.tid,items:Object.entries(FOOD.q).map(([m,q])=>[+m,q]),total:+FOOD.total.toFixed(2),status:'active',d:TODAY,payment:FOOD.payment};S.orders.unshift(o);addTx('Order Train Food',-o.total,'food');FOOD=null;
+  reset('tickets');stack[0].p={tab:'active',sub:'services'};render();modal({icon:'food',title:'Order Successful!',text:'Your food will be brought to your seat. Find it under My Ticket → Services.',actions:`<button class="btn" onclick="closeOverlay()">OK</button>`})}
+SCR.orderDetail=({id})=>{const o=S.orders.find(x=>x.id===id),tk=S.tickets.find(t=>t.id===o.tid);
+  return `<div class="scr">${hd('Order Details')}<div class="body"><div class="card stack"><div class="between"><span><small class="muted">Order ID</small><br><b class="num" style="font-size:19px">${o.id}</b></span>${statusTag(o.status)}</div><div class="kv"><span>Ordered</span><span>${fdate(o.d)}</span></div></div>
+  ${tk?tripCard(tk.legs[0].t):''}<div class="card stack">${o.items.map(([m,q])=>`<div class="kv"><span>${q}× ${MENU[m].n}</span><span class="num">${money(MENU[m].p*q)}</span></div>`).join('')}<div class="hr"></div><div class="kv"><span style="color:var(--ink);font-weight:700">Total</span><span class="price num">${money(o.total)}</span></div></div></div>
+  ${o.status==='active'?`<div class="foot"><button class="btn soft" style="color:var(--bad)" onclick="cancelOrder('${id}')">Cancel Order</button></div>`:''}</div>`};
+function cancelOrder(id){sheet('Cancel Order',`<p class="muted" style="text-align:center;margin:0">The full amount goes back to the way you paid.</p><div class="row"><button class="btn soft" onclick="closeOverlay()">Keep Order</button><button class="btn danger" onclick="doCancelOrder('${id}')">Cancel Order</button></div>`)}
+function doCancelOrder(id){const o=S.orders.find(x=>x.id===id);o.status='canceled';if(!o.payment||o.payment==='wallet'){S.balance=+(S.balance+o.total).toFixed(2);addTx('Refund: Train Food',o.total,'refund')}reset('tickets');stack[0].p={tab:'canceled',sub:'services'};render();modal({icon:'food',title:'Order Canceled',text:`${money(o.total)} has been refunded.`,actions:`<button class="btn" onclick="closeOverlay()">OK</button>`})}
+
+/* my tickets */
+SCR.tickets=({tab='active',sub='tickets'})=>{
+  const tl=S.tickets.filter(t=>t.status===tab), ol=S.orders.filter(o=>o.status===(tab==='completed'?'done':tab));
+  const set=(a,b)=>`stack[0].p={tab:'${a}',sub:'${b}'};rerender()`;
+  return `<div class="scr">${hd('My Ticket',{noBack:true})}
+  <div style="background:var(--surface);padding:0 20px 14px" class="stack"><div class="seg">${['active','completed','canceled'].map(k=>`<button class="${tab===k?'on':''}" onclick="${set(k,k==='completed'?'tickets':sub)}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div>
+  ${tab!=='completed'?`<div class="two"><button class="pill ${sub==='tickets'?'on':''}" onclick="${set(tab,'tickets')}">Tickets</button><button class="pill ${sub==='services'?'on':''}" onclick="${set(tab,'services')}">Services</button></div>`:''}</div>
+  <div class="body">${sub==='tickets'||tab==='completed'?(tl.length?tl.map(tk=>tripCard(tk.legs[0].t,{click:`go('ticketDetail',{id:'${tk.id}'})`,right:statusTag(tk.status),tag:tk.legs.length>1||tk.pax.length>1?`<div class="row" style="gap:6px">${tk.legs.length>1?'<span class="tag soft">Round trip</span>':''}${tk.pax.length>1?`<span class="tag soft">${tk.pax.length} passengers</span>`:''}</div>`:''})).join(''):emptyState('ticket',`No ${tab} tickets`,tab==='active'?'Trips you book appear here until you travel.':tab==='completed'?'Finished trips move here automatically.':'Trips you cancel are listed here with their refund.'))
+   :(ol.length?ol.map(o=>{const tk=S.tickets.find(t=>t.id===o.tid);return `<button class="card stack" onclick="go('orderDetail',{id:'${o.id}'})"><div class="between"><span class="row"><span class="ib" style="padding:0;border:0">${ic('food',22)}</span><span><b>Train Food</b><br><small class="muted">${tk?`${tk.legs[0].t.no} · ${fdate(tk.legs[0].t.date)}`:fdate(o.d)}</small></span></span>${o.status==='active'?'<span class="tag">Paid</span>':'<span class="tag bad">Canceled</span>'}</div><div class="hr"></div><small class="muted">${o.items.map(([m,q])=>`${q}× ${MENU[m].n}`).join(', ')}</small><div class="between"><small class="muted">Total</small><span class="price num" style="font-size:17px">${money(o.total)}</span></div></button>`}).join(''):emptyState('food',`No ${tab} services`,'Food you order for a trip shows up here.'))}</div>${nav('tickets')}</div>`;
+};
+
+/* wallet */
+const txIco=k=>({food:'food',train:'trainfill',topup:'topup',refund:'refund'})[k]||'wallet';
+const txRow=x=>`<div class="li"><span class="ib">${ic(txIco(x.k),22)}</span><div class="grow"><b class="ell">${esc(x.n)}</b><small class="muted">${fdate(x.d)} · ${x.tm}</small></div><span class="num ${x.a<0?'amt-neg':'amt-pos'}">${x.a<0?'- ':'+ '}${money(Math.abs(x.a))}</span></div>`;
+SCR.wallet=()=>`<div class="scr">${hd('My Wallet',{noBack:true})}<div class="body">
+  <div class="wallet-card stack" style="gap:18px"><div class="between" style="position:relative;z-index:1"><b style="font-size:17px">${esc(S.user.name)}</b><small style="font-weight:800;letter-spacing:.1em;opacity:.9">RAILIFY PAY</small></div>
+   <div class="row" style="position:relative;z-index:1;opacity:.9"><span class="num" style="letter-spacing:.2em">•••• •••• •••• 4679</span><button onclick="S.hideBal=!S.hideBal;rerender()" aria-label="${S.hideBal?'Show':'Hide'} balance">${ic(S.hideBal?'eye':'eyeoff',20)}</button></div>
+   <div class="between" style="position:relative;z-index:1;align-items:flex-end"><div><small style="opacity:.85">Your balance</small><div class="bal num">${S.hideBal?'$ • • • •':money(S.balance)}</div></div><button class="wbtn" onclick="go('topup')">${ic('topup',18,2.2)}Top Up</button></div></div>
+  <div class="card row" style="box-shadow:none;border:1px solid var(--line)"><span class="coin">${S.coins}</span><div><b style="font-size:17px">${S.coins} Coins</b><br><small class="muted">Earned from trips. 100 coins = $5 off a booking.</small></div></div>
+  <div class="sec-h"><h2>Recent Transaction</h2><button class="link" onclick="go('txAll')" aria-label="All transactions">${ic('arrow',24,2.2)}</button></div>
+  <div>${S.tx.slice(0,6).map(txRow).join('')}</div></div>${nav('wallet')}</div>`;
+SCR.txAll=()=>`<div class="scr">${hd('Recent Transaction')}<div class="body" style="gap:0">${S.tx.map(txRow).join('')}</div></div>`;
+let TOP={amt:100,payment:'paypal'};
+SCR.topup=()=>`<div class="scr">${hd('Top Up Wallet')}<div class="body" style="gap:22px">
+  <p class="muted" style="margin:0;text-align:center">Enter the amount to add</p>
+  <label class="card" style="display:flex;align-items:center;justify-content:center;gap:4px;border:2px solid var(--brand);box-shadow:none;padding:22px"><span class="price" style="font-size:40px">$</span><input id="ta" type="number" inputmode="decimal" min="5" max="2000" value="${TOP.amt}" oninput="TOP.amt=+this.value" style="width:180px;border:0;background:transparent;outline:0;font-size:44px;font-weight:800;color:var(--brand);text-align:center" aria-label="Amount"></label>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">${[10,20,50,100,200,500].map(a=>`<button class="pill ${TOP.amt===a?'on':''}" style="text-align:center" onclick="TOP.amt=${a};rerender()">$${a}</button>`).join('')}</div>
+  <small class="muted" style="text-align:center">Minimum $5, maximum $2,000 per top up.</small></div>
+  <div class="foot"><button class="btn" onclick="if(!(TOP.amt>=5&&TOP.amt<=2000))return toast('Enter an amount between $5 and $2,000');go('payment',{flow:'topup'})">Continue</button></div></div>`;
+function topupPay(){go('pin',{d:'',flow:'topup'})}
+function commitTopup(){S.balance=+(S.balance+TOP.amt).toFixed(2);addTx('Top Up Wallet',TOP.amt,'topup');reset('wallet');modal({icon:'wallet',title:'Top Up Successful!',text:`${money(TOP.amt)} added from ${pmName(TOP.payment)}. New balance ${money(S.balance)}.`,actions:`<button class="btn" onclick="closeOverlay()">OK</button>`})}
+
+/* account */
+const acRow=(i,l,a,right)=>`<button class="li" onclick="${a}"><span class="ib" style="width:42px;height:42px">${ic(i,21)}</span><span class="grow" style="font-weight:600;font-size:16px">${l}</span>${right??ic('right',20)}</button>`;
+SCR.account=()=>`<div class="scr">${hd('Account',{noBack:true})}<div class="body">
+  <div class="card row"><span class="av" style="width:62px;height:62px;font-size:21px;border:0">${initials(S.user.name)}</span><div class="grow"><b style="font-size:19px" class="ell">${esc(S.user.name)}</b><small class="muted ell" style="display:block">${esc(S.user.email)}</small></div><button class="ibtn" style="color:var(--brand)" onclick="go('qr')" aria-label="My QR code">${ic('qr',26)}</button></div>
+  <div class="card" style="padding:4px 16px">${acRow('user','Personal Info',"go('personal')")}${acRow('users','Passengers List',"go('passengers')")}${acRow('card','Payment Methods',"go('cards')")}</div>
+  <div class="card" style="padding:4px 16px">${acRow('bell','Notification',"go('notifSettings')")}${acRow('moon','Dark Mode',"toggleDark()",`<span class="switch ${isDark()?'on':''}" role="switch" aria-checked="${isDark()}"></span>`)}${acRow('alarm','Station Alarms',"go('tool',{k:'alarm'})",`<small class="muted">${S.alarms.length||''}</small>`)}${acRow('help','Help Center',"go('help')")}</div>
+  <div class="card" style="padding:4px 16px">${acRow('refund','Reset demo data',"resetDemo()",'')}<button class="li" style="color:var(--bad)" onclick="logout()"><span class="ib" style="width:42px;height:42px;background:var(--bad-soft);color:var(--bad)">${ic('logout',21)}</span><span class="grow" style="font-weight:700;font-size:16px">Logout</span></button></div>
+  </div>${nav('account')}</div>`;
+function toggleDark(){S.theme=isDark()?'light':'dark';applyTheme();rerender()}
+function logout(){sheet('Logout',`<p class="muted" style="text-align:center;margin:0">Are you sure you want to log out?</p><div class="row"><button class="btn soft" onclick="closeOverlay()">Cancel</button><button class="btn" onclick="S.signed=false;reset('welcome')">Yes, Logout</button></div>`)}
+function resetDemo(){sheet('Reset demo data',`<p class="muted" style="text-align:center;margin:0">Restore the sample tickets, wallet and passengers. Your own bookings in this browser will be removed.</p><div class="row"><button class="btn soft" onclick="closeOverlay()">Cancel</button><button class="btn danger" onclick="const th=S.theme;S=seed();S.signed=true;S.onboarded=true;S.theme=th;reset('home');toast('Demo data restored')">Reset</button></div>`)}
+SCR.qr=()=>`<div class="scr">${hd('My QR Code')}<div class="et-wrap" style="display:flex;flex-direction:column;justify-content:center;padding-bottom:60px"><div class="et"><div class="qrz" style="padding:30px"><span class="av" style="width:72px;height:72px;font-size:24px;border:0">${initials(S.user.name)}</span><b style="font-size:20px">${esc(S.user.name)}</b><small class="muted">${esc(S.user.phone)}</small><div class="qr" id="qr"></div><small class="muted" style="text-align:center">Show this at a ticket counter to pull up your bookings</small></div></div></div></div>`;
+AFTER.qr=()=>AFTER.eticket({id:'USER-'+hsh(S.user.email),leg:0,px:0});
+SCR.personal=()=>`<div class="scr">${hd('Personal Info')}<form class="body" style="gap:22px" onsubmit="event.preventDefault();savePersonal()">
+  ${field('pn','Full Name','text',S.user.name,'user')}${field('pe','Email','email',S.user.email,'user')}${field('pp','Phone Number','tel',S.user.phone,'user')}${field('pi','ID Number','text',S.user.idNo,'shield')}
+  <button class="btn" style="margin-top:auto">Save</button></form></div>`;
+function savePersonal(){const n=document.getElementById('pn').value.trim(),e=document.getElementById('pe').value.trim();if(n.length<2)return toast('Name needs at least 2 characters');if(!/^\S+@\S+\.\S+$/.test(e))return toast('Enter an email address like name@example.com');Object.assign(S.user,{name:n,email:e,phone:document.getElementById('pp').value.trim(),idNo:document.getElementById('pi').value.trim()});back();toast('Personal info saved')}
+SCR.passengers=()=>`<div class="scr">${hd('Passengers List')}<div class="body flush"><div class="between" style="padding:16px 20px;font-weight:700;border-bottom:1px solid var(--line)"><span style="width:36px">No.</span><span class="grow">Name</span></div>
+  ${S.passengers.map((n,i)=>`<button class="between" style="padding:16px 20px;border-bottom:1px solid var(--line)" onclick="go('passengerEdit',{i:${i}})"><span style="width:36px" class="num">${i+1}</span><span class="grow" style="font-weight:600">${esc(n)}</span><span style="color:var(--muted)">${ic('edit',20)}</span></button>`).join('')}</div>
+  <div class="foot"><button class="btn" onclick="go('passengerEdit',{i:-1})">Add Passenger</button></div></div>`;
+SCR.passengerEdit=({i})=>`<div class="scr">${hd(i<0?'Add New Passenger':'Edit Passenger')}<form class="body" style="gap:22px" onsubmit="event.preventDefault();savePassenger(${i})">
+  ${field('fn','Full Name','text',i<0?'':S.passengers[i],'user','As shown on ID')}
+  <div class="fld"><label>Passenger Type</label><div class="inp">${ic('users',20)}<select id="pt"><option>Adult (General)</option><option>Senior (60+)</option><option>Student</option></select></div></div>
+  ${field('fid','ID Number','text','','shield','Optional')}
+  <div style="margin-top:auto" class="stack">${i>=0?`<button type="button" class="btn soft" style="color:var(--bad)" onclick="S.passengers.splice(${i},1);back();toast('Passenger removed')">Delete Passenger</button>`:''}<button class="btn">Save</button></div></form></div>`;
+function savePassenger(i){const n=document.getElementById('fn').value.trim();if(n.length<2)return toast('Add the passenger’s full name');if(S.passengers.some((p,k)=>k!==i&&p.toLowerCase()===n.toLowerCase())||n===S.user.name)return toast(`${n} is already on your list`);if(i<0)S.passengers.push(n);else S.passengers[i]=n;back();toast(i<0?'Passenger added':'Passenger updated')}
+SCR.cards=()=>`<div class="scr">${hd('Payment Methods')}<div class="body">
+  ${PMS.map(p=>`<div class="card row"><span class="ib" style="padding:0;border:0">${ic(p.ico,22)}</span><b class="grow">${p.n}</b><small class="muted">${p.id==='wallet'?money(S.balance):'Connected'}</small></div>`).join('')}
+  ${S.cards.map((c,i)=>`<div class="card row"><span class="ib" style="padding:0;border:0">${ic('card',22)}</span><span class="grow"><b>${esc(c.brand)} •••• ${c.last}</b><br><small class="muted">Expires ${c.exp}</small></span><button class="ibtn" style="color:var(--bad)" onclick="S.cards.splice(${i},1);rerender();toast('Card removed')" aria-label="Remove card">${ic('trash',20)}</button></div>`).join('')}</div>
+  <div class="foot"><button class="btn" onclick="go('addCard')">Add New Payment</button></div></div>`;
+SCR.addCard=()=>`<div class="scr">${hd('Add New Payment')}<form class="body" style="gap:22px" onsubmit="event.preventDefault();saveCard()">
+  <div class="wallet-card" style="min-height:180px;display:flex;flex-direction:column;justify-content:space-between"><b style="position:relative;z-index:1">${esc(S.user.name)}</b><span class="num" style="letter-spacing:.2em;font-size:18px;position:relative;z-index:1">•••• •••• •••• ••••</span></div>
+  ${field('cn','Card Number','text','','card','1234 5678 9012 3456')}<div class="two">${field('ce','Expiry Date','text','','cal','MM/YY')}${field('cv','CVV','password','','shield','123')}</div>
+  <button class="btn" style="margin-top:auto">Add Card</button></form></div>`;
+function saveCard(){const n=document.getElementById('cn').value.replace(/\D/g,''),e=document.getElementById('ce').value.trim();if(n.length<13||n.length>19)return toast('Card numbers have 13 to 19 digits');if(!/^(0[1-9]|1[0-2])\/\d{2}$/.test(e))return toast('Write the expiry as MM/YY, for example 09/28');if(!/^\d{3,4}$/.test(document.getElementById('cv').value))return toast('CVV is the 3 or 4 digits on the back');S.cards.push({brand:n[0]==='4'?'Visa':n[0]==='5'?'Mastercard':n[0]==='3'?'Amex':'Card',last:n.slice(-4),exp:e});back();toast('Card added')}
+SCR.notifSettings=()=>`<div class="scr">${hd('Notification')}<div class="body"><div class="card" style="padding:4px 16px">${[['trip','Trip updates','Delays, platform changes, boarding'],['promo','Special offers','Discount codes and fare sales'],['news','News & stories','Station and network news']].map(([k,l,d])=>`<button class="li" onclick="S.notif.${k}=!S.notif.${k};rerender()"><span class="grow"><b>${l}</b><small class="muted">${d}</small></span><span class="switch ${S.notif[k]?'on':''}" role="switch" aria-checked="${S.notif[k]}"></span></button>`).join('')}</div></div></div>`;
+SCR.help=()=>`<div class="scr">${hd('Help Center')}<div class="body">${[['How do I change my seat?','Re-schedule the trip to the same train, or cancel and rebook. Seats are kept when you re-schedule.'],['When do I get my refund?','Right away, into My Wallet. More than 24h before departure you get 75%, 2–24h gets 50%, under 2h no refund.'],['Can I book for someone else?','Yes. Add them under Account → Passengers List, then choose them on the Booking Details screen.'],['Where is my e-ticket?','My Ticket → Active → tap the trip → Show E-Ticket. Each passenger has their own QR code.']].map(([q,a])=>`<details class="card"><summary style="font-weight:700;cursor:pointer;list-style:none" class="between">${q}${ic('down',20)}</summary><p class="muted" style="margin:12px 0 0;line-height:1.6">${a}</p></details>`).join('')}</div></div>`;
+
+/* notifications */
+const NOTES=[
+ {t:'Payment successful',d:'Your booking for Proxima → Aurora Point is confirmed.',ico:'check',when:'Today'},
+ {t:'25% off this week',d:'Use code 8XKSD on any booking. Up to $20 off.',ico:'gift',when:'Yesterday'},
+ {t:'Platform change',d:'Northline trains from Neo Delta now leave from platform 3.',ico:'info',when:'2 days ago'},
+ {t:'Wallet topped up',d:'$125.00 added to My Wallet.',ico:'wallet',when:'8 days ago'},
+];
+SCR.notifications=()=>{const u=S.unread;S.unread=0;return `<div class="scr">${hd('Notification')}<div class="body">${NOTES.map((n,i)=>`<div class="card row" style="align-items:flex-start"><span class="ib" style="padding:0;border:0">${ic(n.ico,22)}</span><div class="grow"><div class="between"><b>${n.t}</b>${i<u?'<span class="tag">New</span>':''}</div><small class="muted" style="display:block;margin:4px 0;line-height:1.5">${n.d}</small><small class="muted xs">${n.when}</small></div></div>`).join('')}</div></div>`};
+
+/* news & promos */
+SCR.newsList=()=>`<div class="scr">${hd('Our News & Stories')}<div class="body">${NEWS.map((n,i)=>`<button class="promo" onclick="go('news',{i:${i}})">${newsArt(n,i,150)}<div class="bot"><div class="grow"><b style="display:block;font-size:16px">${n.t}</b><small class="muted">${n.ago}</small></div></div></button>`).join('')}</div></div>`;
+SCR.news=({i})=>{const n=NEWS[i];return `<div class="scr">${hd('',{right:`<button class="ibtn" onclick="copyTxt('${n.t.replace(/'/g,'')}')" aria-label="Copy headline">${ic('share',22)}</button>`})}<div class="body"><div style="border-radius:20px;overflow:hidden">${newsArt(n,i,220)}</div><h2 style="font-size:25px;line-height:1.25">${n.t}</h2><small class="muted">${n.ago}</small>${n.b.map(p=>`<p style="margin:0;line-height:1.7;max-width:65ch">${p}</p>`).join('')}</div></div>`};
+SCR.promo=({i})=>{const p=PROMOS[i];return `<div class="scr">${hd('Special Offers')}<div class="body"><div class="promo">${promoArt(p,i)}</div><h2 style="font-size:24px">${p.t}</h2><small class="muted">${p.s}</small>
+  <div class="card between" style="border:2px dashed var(--brand);box-shadow:none"><span><small class="muted">Coupon code</small><br><b style="font-size:22px;letter-spacing:.08em" class="num">${p.code}</b></span><button class="btn sm" style="width:auto;padding:0 18px" onclick="copyTxt('${p.code}')">${ic('copy',18)} Copy</button></div>
+  <h3>Terms</h3><ul style="margin:0;padding-left:20px;line-height:1.8" class="muted">${p.terms.map(t=>`<li>${t}</li>`).join('')}</ul><small class="muted">Enter the code on the Review Summary screen before you confirm.</small></div>
+  <div class="foot"><button class="btn" onclick="reset('home')">Book a Trip</button></div></div>`};
+
+/* check booking */
+SCR.checkBooking=({err})=>`<div class="scr">${hd('Check Booking')}<form class="body" style="gap:22px" onsubmit="event.preventDefault();findBooking()">
+  <p class="muted" style="margin:0;line-height:1.55">Enter the 7-character booking ID from your confirmation email.</p>
+  <div class="fld"><label for="cb">Booking ID</label><div class="inp">${ic('ticket',20)}<input id="cb" placeholder="e.g. VX79WRK" style="text-transform:uppercase" maxlength="7"></div></div>
+  ${err?`<small style="color:var(--bad);font-weight:600">${err}</small>`:''}
+  <div class="stack" style="gap:8px"><small class="muted">Your recent bookings</small><div class="pills" style="flex-wrap:wrap">${S.tickets.slice(0,4).map(t=>`<button type="button" class="pill" onclick="document.getElementById('cb').value='${t.id}'">${t.id}</button>`).join('')}</div></div>
+  <button class="btn" style="margin-top:auto">Check Booking</button></form></div>`;
+function findBooking(){const v=document.getElementById('cb').value.trim().toUpperCase();const t=S.tickets.find(x=>x.id===v);if(t)go('ticketDetail',{id:v});else{stack.at(-1).p.err=v?`No booking with ID ${v}. Check the code in your email; it has letters and digits only.`:'Type your booking ID first.';rerender()}}
+
+/* tools */
+const TF={from:'Apex Square',to:'Neo Delta',date:TODAY,cls:0,pax:1,weight:5,station:'Proxima',mins:10,tid:null};
+const tfStations=()=>`<div class="row" style="align-items:stretch"><div class="grow stack" style="gap:14px">${['from','to'].map(k=>`<div class="fld"><label>${k==='from'?'Origin':'Destination'}</label><button class="inp" onclick="pickStation('${k}',1)">${ic('train',20)}<span class="val">${TF[k]}</span>${ic('down',18)}</button></div>`).join('')}</div><button class="swap" onclick="[TF.from,TF.to]=[TF.to,TF.from];rerender()" aria-label="Swap">${ic('swap',20,2)}</button></div>`;
+const tfDate=()=>`<div class="fld"><label for="tfd">Date</label><label class="inp">${ic('cal',20)}<input id="tfd" type="date" min="${TODAY}" value="${TF.date}" onchange="TF.date=this.value;rerender()"></label></div>`;
+const TOOLS={
+ seats:{t:'Seat Availability',f:()=>tfStations()+tfDate(),r:()=>genTrains(TF.from,TF.to,TF.date,0).map(t=>{const r=rng(hsh(t.no+t.date));return `<div class="card stack" style="gap:10px"><div class="row">${opLogo(t.op)}<div class="grow"><b>${OPS[t.op].n}</b><br><small class="muted">${t.no} · ${ftime(t.dep)} → ${ftime(t.arr)}</small></div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${CLASSES.map((c,i)=>{const n=i?Math.floor(r()*24):t.seats;return `<div style="background:${n?'var(--brand-softer)':'var(--bad-soft)'};border-radius:12px;padding:8px;text-align:center"><small class="muted xs">${c.n}</small><br><b class="num" style="color:${n?'var(--brand)':'var(--bad)'}">${n?n+' left':'Full'}</b></div>`}).join('')}</div></div>`}).join('')},
+ schedule:{t:'Train Schedule',f:()=>tfStations()+tfDate(),r:()=>genTrains(TF.from,TF.to,TF.date,0).map(t=>tripCard(t,{click:`go('routeView',{ri:${R(t)}})`,right:departed(t)?'<small class="muted">Departed</small>':'<span class="tag soft">Route</span>'})).join('')},
+ route:{t:'Route Information',f:()=>tfStations(),r:()=>{const t=genTrains(TF.from,TF.to,TF.date,0)[2];return routeTimeline(t,false)}},
+ live:{t:'Train Live Status',f:()=>tfStations(),r:()=>{const list=genTrains(TF.from,TF.to,TODAY,0);return `<small class="muted">Today's trains · tap one to follow it</small>`+list.map(t=>{const now=new Date(),dep=dtOf(t.date,t.dep),arr=dtOf(arrDate(t),t.arr%1440),st=now<dep?['Scheduled','soft']:now>arr?['Arrived','ok']:['Running','warn'];return tripCard(t,{click:`go('routeView',{ri:${R(t)},live:1})`,right:`<span class="tag ${st[1]}">${st[0]}</span>`})}).join('')}},
+ fare:{t:'Train Fare',f:()=>tfStations()+`<div class="two"><div class="fld"><label>Class</label><button class="inp" onclick="pickClass(1)">${ic('class',20)}<span class="val">${CLASSES[TF.cls].n}</span>${ic('down',18)}</button></div><div class="fld"><label>Passengers</label><button class="inp" onclick="pickPax(1)">${ic('user',20)}<span class="val">${TF.pax} Adult${TF.pax>1?'s':''}</span>${ic('down',18)}</button></div></div>`,r:()=>{const l=genTrains(TF.from,TF.to,addD(TODAY,1),TF.cls),lo=Math.min(...l.map(t=>t.price)),hi=Math.max(...l.map(t=>t.price)),fee=2*TF.pax;return `<div class="card stack"><div class="kv"><span>Lowest fare per person</span><span class="num">${money(lo)}</span></div><div class="kv"><span>Highest fare per person</span><span class="num">${money(hi)}</span></div><div class="kv"><span>Service fee</span><span class="num">${money(fee)}</span></div><div class="hr"></div><div class="kv"><span style="color:var(--ink);font-weight:700">Estimated total</span><span class="price num">${money(lo*TF.pax+fee)} – ${money(hi*TF.pax+fee)}</span></div><small class="muted">Based on tomorrow's ${l.length} departures. Distance ${Math.abs(STATIONS.indexOf(TF.from)-STATIONS.indexOf(TF.to))*38} km.</small></div><button class="btn" onclick="Object.assign(H,{trip:'one',from:TF.from,to:TF.to,cls:TF.cls,pax:TF.pax,date:addD(TODAY,1)});startSearch()">Search these trains</button>`}},
+ refund:{t:'Refund Calculation',f:()=>{const act=S.tickets.filter(t=>t.status==='active');if(!TF.tid||!act.find(t=>t.id===TF.tid))TF.tid=act[0]?.id;return act.length?`<div class="fld"><label>Trip</label><label class="inp">${ic('ticket',20)}<select onchange="TF.tid=this.value;rerender()">${act.map(t=>`<option value="${t.id}" ${t.id===TF.tid?'selected':''}>${t.id} · ${t.legs[0].t.from} → ${t.legs[0].t.to}, ${fdate(t.legs[0].t.date)}</option>`).join('')}</select></label></div>`:emptyState('ticket','No active trips','Only upcoming trips can be refunded.')},
+   r:()=>{const tk=S.tickets.find(t=>t.id===TF.tid);if(!tk)return '';const r=refundFor(tk);return `<div class="card stack"><div class="kv"><span>Ticket paid</span><span class="num">${money(tk.total)}</span></div><div class="kv"><span>Time to departure</span><span>${r.h>48?Math.floor(r.h/24)+' days':Math.max(0,Math.floor(r.h))+' hours'}</span></div><div class="kv"><span>Refund rate</span><span>${r.pct}%</span></div><div class="hr"></div><div class="kv"><span style="color:var(--ink);font-weight:700">You'd get back</span><span class="price num">${money(r.amt)}</span></div></div><div class="card stack" style="box-shadow:none;background:var(--bg)"><b>Policy</b><small class="muted" style="line-height:1.7">More than 24h before departure: 75%<br>2 to 24h before: 50%<br>Under 2h: no refund</small></div><button class="btn soft" style="color:var(--bad)" onclick="cancelSheet('${tk.id}')">Cancel this trip</button>`}},
+ alarm:{t:'Station Alarm',f:()=>`<div class="fld"><label>Wake me before</label><button class="inp" onclick="pickStation('station',1)">${ic('pin',20)}<span class="val">${TF.station}</span>${ic('down',18)}</button></div><div class="fld"><label>Alert</label><div class="pills">${[5,10,15,30].map(m=>`<button class="pill ${TF.mins===m?'on':''}" onclick="TF.mins=${m};rerender()">${m} min before</button>`).join('')}</div></div><button class="btn" onclick="setAlarm()">Set Alarm</button>`,
+   r:()=>S.alarms.length?`<h3>Your alarms</h3>`+S.alarms.map((a,i)=>`<div class="card row"><span class="ib" style="padding:0;border:0">${ic('alarm',22)}</span><span class="grow"><b>${a.st}</b><br><small class="muted">${a.m} minutes before arrival</small></span><button class="ibtn" style="color:var(--bad)" onclick="S.alarms.splice(${i},1);rerender()" aria-label="Delete alarm">${ic('trash',20)}</button></div>`).join(''):''},
+ ship:{t:'Shipping Rates',f:()=>tfStations()+`<div class="fld"><label for="sw">Parcel weight (kg)</label><label class="inp">${ic('box',20)}<input id="sw" type="number" min="0.5" max="50" step="0.5" value="${TF.weight}" onchange="TF.weight=Math.min(50,Math.max(.5,+this.value||.5));rerender()"></label></div>`,
+   r:()=>{const d=Math.abs(STATIONS.indexOf(TF.from)-STATIONS.indexOf(TF.to))*38,base=5,dist=+(d*.04).toFixed(2),w=+(TF.weight*.8).toFixed(2);return `<div class="card stack"><div class="kv"><span>Base rate</span><span class="num">${money(base)}</span></div><div class="kv"><span>Distance (${d} km)</span><span class="num">${money(dist)}</span></div><div class="kv"><span>Weight (${TF.weight} kg × $0.80)</span><span class="num">${money(w)}</span></div><div class="hr"></div><div class="kv"><span style="color:var(--ink);font-weight:700">Shipping cost</span><span class="price num">${money(base+dist+w)}</span></div><small class="muted">Drop off at the parcel desk at ${TF.from}. Arrives on the next train with space, usually same day. Max 50 kg.</small></div>`}},
+};
+SCR.tool=({k})=>{const T=TOOLS[k];return `<div class="scr">${hd(T.t)}<div class="body"><div class="card stack" style="gap:16px">${T.f()}</div>${T.r()}</div></div>`};
+function routeTimeline(t,live){
+  const st=stops(t), now=new Date(), nm=(now-parseD(t.date))/6e4, delay=live?[0,0,0,3,5][hsh(t.no)%5]:0;
+  let cur=-1;if(live)st.forEach((s,i)=>{if(nm>=s.m+delay)cur=i});
+  const msg=!live?`${st.length} stops · ${st.at(-1).km} km · ${fdur(t.dur)}`:nm<t.dep?`Not departed yet · leaves ${t.from} at ${ftime(t.dep)}`:cur>=st.length-1?`Arrived at ${t.to}`:`Between ${st[cur].n} and ${st[cur+1].n} · ${delay?delay+' min late':'on time'}`;
+  return `<div class="card stack"><div class="row">${opLogo(t.op)}<div class="grow"><b>${OPS[t.op].n} · ${t.no}</b><br><small class="muted">${msg}</small></div>${live?`<span class="tag ${delay?'warn':'ok'}">${delay?'+'+delay+' min':'On time'}</span>`:''}</div><div class="hr"></div>
+  <div class="tl">${st.map((s,i)=>`<div class="stp ${i<=cur?'done':''} ${i===cur&&i<st.length-1?'cur':''}"><span class="tm num">${ftime(s.m+delay*(i>0))}</span><span class="rail"><span class="node"></span></span><span><b>${s.n}</b><br><small class="muted">${s.code} · ${s.km} km${i===0?' · departs':i===st.length-1?' · terminus':' · 2 min stop'}</small></span></div>`).join('')}</div></div>`;
+}
+SCR.routeView=({ri,live})=>{const t=REG[ri];return `<div class="scr">${hd(live?'Live Status':'Train Route',{sub:`${t.from} → ${t.to}`})}<div class="body">${routeTimeline(t,live)}${live?`<button class="btn soft" onclick="rerender()">Refresh</button>`:''}</div></div>`};
+
+function setAlarm(){S.alarms.push({st:TF.station,m:TF.mins});rerender();modal({icon:'alarm',title:'Station Alarm Set!',text:`We'll alert you ${TF.mins} minutes before ${TF.station}.`,actions:`<button class="btn" onclick="closeOverlay()">OK</button>`})}
+/* boot */
+if(S.signed)reset('home');else reset('splash');
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeOverlay()});
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if(!S.theme)rerender()});
+</script>
+
+</body></html>
