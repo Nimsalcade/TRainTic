@@ -149,6 +149,21 @@ b,strong,h1,h2,h3{font-weight:500}
 .step:active{transform:scale(.97)}
 .stepw.on .step{color:var(--accent-strong)}
 .stepw .step:not(:last-child){border-radius:var(--radius-control) 0 0 var(--radius-control)}
+.stepw{position:relative}
+.step{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.stepchips.reordering .stepw{transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.stepchips.reordering .stepw.dragging{transition:none;z-index:3;background:var(--surface-raised);box-shadow:inset 0 0 0 1.5px var(--accent),var(--shadow-floating);cursor:grabbing}
+.slideprev{position:fixed;z-index:80;left:0;top:0;width:136px;padding:6px 6px 5px;border-radius:12px;background:var(--surface-raised);box-shadow:inset 0 0 0 1px var(--border),var(--shadow-floating);pointer-events:none;transition:opacity .15s}
+.slideprev svg{display:block;width:100%;height:78px;border-radius:7px}
+.slideprev b{display:block;margin-top:4px;font-size:12px;font-weight:600;text-align:center;color:var(--text-secondary)}
+@media (prefers-reduced-motion:reduce){.stepchips.reordering .stepw{transition:none}}
+.dropzone{display:grid;justify-items:center;gap:4px;padding:var(--space-5,20px) var(--space-3);border:1.5px dashed var(--border);border-radius:14px;text-align:center;color:var(--text-secondary)}
+.dropzone.over{border-color:var(--accent);background:var(--accent-subtle)}
+.dropzone .btn{margin-top:var(--space-2)}
+.imprep{margin:var(--space-3) 0 0;padding:0;list-style:none;display:grid;gap:4px;font-size:var(--text-sm,13px)}
+.imprep li{display:flex;gap:8px;align-items:center}
+.imprep .ic{width:16px;height:16px;flex:none}
+body.dropping::after{content:'Drop board files to import them';position:fixed;inset:12px;z-index:90;display:grid;place-items:center;border:2px dashed var(--accent);border-radius:18px;background:rgba(10,12,15,.55);color:#fff;font-weight:600;font-size:18px;pointer-events:none}
 .stepx{display:grid;place-items:center;width:var(--control-height-md);padding:0;border:0;background:none;border-radius:0 var(--radius-control) var(--radius-control) 0;color:var(--accent-strong);box-shadow:inset 1px 0 0 var(--accent-divider)}
 .stepx .ic{width:16px;height:16px}
 .step .bar{position:absolute;left:var(--space-2);right:var(--space-2);bottom:5px;height:2px;border-radius:2px;background:var(--accent);transform-origin:left;transform:scaleX(0)}
@@ -413,7 +428,7 @@ textarea.json{width:100%;height:160px;font:400 var(--text-xs)/1.45 ui-monospace,
   <div id="sheetBody"></div>
 </div>
 <div id="toast" role="status" aria-live="polite"></div>
-<input type="file" id="fileIn" accept=".json,application/json" hidden>
+<input type="file" id="fileIn" accept=".json,.325,.txt,application/json,text/plain" multiple hidden>
 <input type="file" id="imgIn" accept="image/*" hidden>
 <script>
 (() => {
@@ -546,6 +561,7 @@ const ICON = {
   box: '<rect x="3.5" y="7" width="17" height="10" rx="1.6"/><path d="M7.5 12h9"/>',
   plain: '<path d="M6 7.5h12M12 7.5v10"/>',
   download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M5 19.5h14"/>',
+  upload: '<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M5 19.5h14"/>',
   opacity: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/>',
   level: '<path d="M4 12h16"/><path d="M7 8.5 4 12l3 3.5M17 8.5l3 3.5-3 3.5"/>',
   select: '<rect x="3.5" y="3.5" width="17" height="17" rx="2" stroke-dasharray="3 2.4"/><path d="m10 9 7 3-3 1.2L12.8 17z" fill="currentColor"/>',
@@ -599,6 +615,7 @@ function blankDoc() {
     size: 1, cam: 40, stadium: false, labels: 'label', labelPos: 'in', onion: true, speed: 1, loop: false, drawAnim: 'draw', drawTime: 'first', teams: { a: null, b: null, gkA: null, gkB: null }, teamImg: { a: null, b: null },
     form: { a: { key: '4-3-3', h: 0, w: 1 }, b: { key: '4-4-2', h: 0, w: 1 } }, steps: [{ items: [] }], cur: 0 };
 }
+const LIBMAX = 150;
 const NUMK = ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'bend', 'w', 'h', 'r', 'ang', 'len', 'spread', 'rot', 'size', 'num', 'si', 'alpha'];
 function sanitizeItem(i) {
   if (!i || typeof i !== 'object' || RANK[i.type] == null) return null;
@@ -2283,13 +2300,14 @@ function updateSteps() {
   let h = `<button class="play" id="btnPlay" aria-label="${playing ? 'Stop animation' : 'Play animation'}">${icon(playing ? 'stop' : 'play')}</button><div class="stepchips" role="group" aria-label="Slides" data-roving="select">`;
   for (let i = 0; i < n; i++) {
     const on = i === doc.cur;
-    h += `<span class="stepw${on ? ' on' : ''}"><button class="step" data-step="${i}" data-rove tabindex="${on ? 0 : -1}"${on ? ' aria-current="step"' : ''} aria-label="Slide ${i + 1}">${i + 1}<i class="bar" aria-hidden="true"></i></button>${on && n > 1 && !playing ? `<button class="stepx" data-delstep="${i}" aria-label="Delete slide ${i + 1}">${icon('close')}</button>` : ''}</span>`;
+    h += `<span class="stepw${on ? ' on' : ''}"><button class="step" data-step="${i}" data-rove tabindex="${on ? 0 : -1}"${on ? ' aria-current="step"' : ''} aria-label="Slide ${i + 1}" title="Slide ${i + 1}. Hold and drag to reorder">${i + 1}<i class="bar" aria-hidden="true"></i></button>${on && n > 1 && !playing ? `<button class="stepx" data-delstep="${i}" aria-label="Delete slide ${i + 1}">${icon('close')}</button>` : ''}</span>`;
   }
   h += `</div><button class="ib" id="btnAddStep" aria-label="Add slide" title="Add slide">${icon('plus')}</button><button class="spd" id="btnSpeed" aria-label="Playback speed ${doc.speed}×">${doc.speed}×</button><button class="ib" id="btnLoop" aria-label="Loop playback" aria-pressed="${doc.loop}">${icon('loop')}</button><button class="ib" id="btnFocus" aria-label="Hide toolbars" title="Full-screen pitch (F)">${icon('expand')}</button>`;
   setHTML($('#steps'), h);
   updateFbar();
 }
 $('#steps').addEventListener('click', e => {
+  if (swallowClick) { swallowClick = false; e.preventDefault(); return; }
   const x = e.target.closest('[data-delstep]');
   if (x) { const kb = x === document.activeElement; deleteStep(+x.dataset.delstep); if (kb) { const s = $('#steps [aria-current="step"]'); if (s) s.focus({ preventScroll: true }); } return; }
   const s = e.target.closest('[data-step]'); if (s) { gotoStep(+s.dataset.step); return; }
@@ -2300,6 +2318,108 @@ $('#steps').addEventListener('click', e => {
   else if (b.id === 'btnLoop') { doc.loop = !doc.loop; persist(); updateSteps(); }
   else if (b.id === 'btnFocus') setFocus(true);
 });
+
+/* ---------- slide order: hold a slide and drop it left or right ---------- */
+let sdrag = null, swallowClick = false;
+function moveStep(from, to, keepFocus) {
+  const n = doc.steps.length; to = clamp(to, 0, n - 1);
+  if (from === to || from < 0 || from >= n) return;
+  stopPlay(); flushViewCommit();
+  const [s] = doc.steps.splice(from, 1); doc.steps.splice(to, 0, s);
+  doc.cur = to; sel = null; group.clear(); selMode = null; polyDraft = null; reveal = null;
+  commit(); renderAll(); applyCam();
+  toast(`Slide ${from + 1} moved to position ${to + 1}`, { label: 'Undo', fn: undo });
+  if (keepFocus) { const c = $('#steps [aria-current="step"]'); if (c) c.focus({ preventScroll: true }); }
+  const c = document.querySelector('.stepw.on'); if (c) c.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+}
+function beginSlideDrag(st) {
+  if (sdrag !== st || st.active || playing) return;
+  st.active = true;
+  const strip = st.w.parentNode;
+  st.strip = strip; st.ws = [...strip.querySelectorAll('.stepw')];
+  st.rects = st.ws.map(w => w.getBoundingClientRect());
+  st.sc = [strip, $('#steps')].find(el => el.scrollWidth > el.clientWidth + 1) || strip;
+  st.s0 = st.sc.scrollLeft;
+  const cs = getComputedStyle(strip), gap = parseFloat(cs.columnGap) || parseFloat(cs.gap) || 4;
+  st.shift = st.rects[st.i].width + gap; st.to = st.i;
+  strip.classList.add('reordering'); st.w.classList.add('dragging');
+  const pv = document.createElement('div'); pv.className = 'slideprev';
+  pv.innerHTML = thumbSVG({ ...doc, steps: [doc.steps[st.i]] }) + `<b>Slide ${st.i + 1}</b>`;
+  document.body.appendChild(pv); st.pv = pv;
+  try { if (navigator.vibrate) navigator.vibrate(12); } catch (_) {}
+  layoutSlideDrag(st);
+  const tick = () => {
+    if (sdrag !== st) return;
+    const r = st.sc.getBoundingClientRect(), edge = 40;
+    const v = st.x < r.left + edge ? -Math.ceil((r.left + edge - st.x) / 5) : st.x > r.right - edge ? Math.ceil((st.x - r.right + edge) / 5) : 0;
+    if (v) { st.sc.scrollLeft += v; layoutSlideDrag(st); }
+    st.raf = requestAnimationFrame(tick);
+  };
+  st.raf = requestAnimationFrame(tick);
+}
+function layoutSlideDrag(st) {
+  if (!st.active) return;
+  const ds = st.sc.scrollLeft - st.s0, r0 = st.rects[st.i], move = st.x - st.x0;
+  const centre = r0.left + r0.width / 2 + move;
+  let to = 0;
+  st.rects.forEach((r, j) => { if (j !== st.i && r.left + r.width / 2 - ds < centre) to++; });
+  st.to = to;
+  st.ws.forEach((w, j) => {
+    if (j === st.i) { w.style.transform = `translateX(${(move + ds).toFixed(1)}px) scale(1.08)`; return; }
+    const off = st.i < j && j <= to ? -st.shift : to <= j && j < st.i ? st.shift : 0;
+    w.style.transform = off ? `translateX(${off}px)` : '';
+  });
+  const pw = 136, x = clamp(centre - pw / 2, 8, innerWidth - pw - 8), ph = st.pv.offsetHeight || 104;
+  const y = r0.top - ph - 12 < 8 ? r0.bottom + 12 : r0.top - ph - 12;
+  st.pv.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+  st.pv.querySelector('b').textContent = to === st.i ? `Slide ${st.i + 1}` : `Slide ${st.i + 1} → position ${to + 1}`;
+}
+function endSlideDrag(e, drop) {
+  const st = sdrag; if (!st || (e && e.pointerId != null && st.id != null && e.pointerId !== st.id)) return;
+  sdrag = null; clearTimeout(st.t);
+  if (!st.active) return;
+  cancelAnimationFrame(st.raf);
+  st.strip.classList.remove('reordering');
+  st.ws.forEach(w => { w.style.transform = ''; w.classList.remove('dragging'); });
+  if (st.pv) st.pv.remove();
+  swallowClick = true; setTimeout(() => { swallowClick = false; }, 400);
+  if (drop && st.to !== st.i) moveStep(st.i, st.to);
+}
+$('#steps').addEventListener('pointerdown', e => {
+  const btn = e.target.closest('.step');
+  if (!btn || playing || doc.steps.length < 2 || e.button > 0) return;
+  const st = { i: +btn.dataset.step, w: btn.closest('.stepw'), id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, active: false, touch: e.pointerType !== 'mouse', t: 0 };
+  // A finger holds still to pick a slide up, so a quick swipe still scrolls the strip. A mouse just drags.
+  if (st.touch) st.t = setTimeout(() => beginSlideDrag(st), 300);
+  sdrag = st;
+});
+window.addEventListener('pointermove', e => {
+  const st = sdrag; if (!st || e.pointerId !== st.id) return;
+  st.x = e.clientX;
+  if (!st.active) {
+    const d = Math.hypot(e.clientX - st.x0, e.clientY - st.y0);
+    if (st.touch) { if (d > 10) { clearTimeout(st.t); sdrag = null; } return; }
+    if (d < 6) return;
+    beginSlideDrag(st);
+  }
+  layoutSlideDrag(st);
+});
+window.addEventListener('pointerup', e => endSlideDrag(e, true));
+window.addEventListener('pointercancel', e => { if (sdrag && sdrag.active && sdrag.touch) return; endSlideDrag(e, false); });
+// Once a slide is picked up, the finger moves it instead of scrolling the strip.
+$('#steps').addEventListener('touchmove', e => {
+  const st = sdrag; if (!st) return;
+  if (st.active) { e.preventDefault(); const t = e.touches[0]; if (t) { st.x = t.clientX; layoutSlideDrag(st); } }
+}, { passive: false });
+$('#steps').addEventListener('touchend', () => { if (sdrag && sdrag.active) endSlideDrag(null, true); });
+$('#steps').addEventListener('contextmenu', e => e.preventDefault());
+// Keyboard: Alt + arrow moves the focused slide.
+$('#steps').addEventListener('keydown', e => {
+  if (!e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+  const b = e.target.closest && e.target.closest('.step'); if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  const i = +b.dataset.step; moveStep(i, i + (e.key === 'ArrowLeft' ? -1 : 1), true);
+}, true);
 
 function updateTop() {
   $('#ttlMain').textContent = doc.meta.title || 'Untitled board';
@@ -2391,7 +2511,7 @@ function duplicateSession(id) {
   const lib = store.get('hs.lib') || [], src = id === doc.id ? doc : (lib.find(b => b.id === id) || {}).doc; if (!src) return false;
   const copy = normalizeDoc(clone(src)); copy.id = uid(); copy.meta.title = `${src.meta && src.meta.title ? src.meta.title : 'Untitled session'} copy`.slice(0, 80);
   lib.unshift({ id: copy.id, name: copy.meta.title, updated: Date.now(), doc: copy });
-  return store.set('hs.lib', lib.slice(0, 60));
+  return store.set('hs.lib', lib.slice(0, LIBMAX));
 }
 
 /* ---------- sheets ---------- */
@@ -2437,7 +2557,7 @@ const SHEETS = {
   menu: () => ['Board', `
     <div class="list">${row('sessions', 'Sessions', `${libList().length} on this device. Open one or start a new session`)}${row('session', 'Session details', 'Title, duration and coaching notes')}${row('dupsession', 'Duplicate this session', 'Keep a copy to try a variation', menuNote.dup)}</div>
     <div class="list">${row('formation', 'Formations', 'Line-ups, block height and width')}${row('teams', 'Teams', 'Colours, crests and flags')}${row('pitch', 'Pitch and view', 'Stadium, floor, guides, labels')}${row('branding', 'Branding', 'Your board name, logo and colours')}</div>
-    <div class="list">${row('export', 'Export slides', 'Images of the slides you pick, or a video')}${row('exportjson', 'Share board file', 'A file another coach can open here', menuNote.exportjson)}${row('import', 'Open board file', 'Load a board someone sent you')}${row('help', 'Gestures and shortcuts', '')}</div>`],
+    <div class="list">${row('export', 'Export slides', 'Images of the slides you pick, or a video')}${row('exportjson', 'Share board file', 'A file another coach can open here', menuNote.exportjson)}${row('import', 'Import boards', 'Board files or game-model packs from this device')}${row('help', 'Gestures and shortcuts', '')}</div>`],
   sessions: () => {
     const lib = libList();
     const card = b => {
@@ -2446,10 +2566,11 @@ const SHEETS = {
       if (renaming === b.id) return `<div class="scard" data-name="${key}"><span class="sthumb">${thumbSVG(b.doc)}</span><div class="sren"><label class="vh" for="renIn">Session name</label><input id="renIn" data-renin="${id}" maxlength="80" value="${nm}"><div class="btnrow"><button class="btn ghost" data-rencancel="1">Cancel</button><button class="btn" data-rensave="${id}">Rename</button></div></div></div>`;
       return `<div class="scard${open ? ' on' : ''}" data-name="${key}"><button class="sopen" data-openboard="${id}" aria-label="Open ${nm}${open ? ', open now' : ''}"><span class="sthumb">${thumbSVG(b.doc)}${open ? '<em class="sbadge">Open</em>' : ''}</span><span class="sinfo"><b>${nm}</b><small>${ago(b.updated)}, ${n} slide${n > 1 ? 's' : ''}${b.doc.stadium ? ', stadium' : ''}</small></span></button><div class="sact"><button class="ib" data-renboard="${id}" aria-label="Rename ${nm}">${icon('edit')}</button><button class="ib" data-dupboard="${id}" aria-label="Duplicate ${nm}">${icon('copy')}</button>${open ? '' : `<button class="ib" data-delboard="${id}" aria-label="Delete ${nm}">${icon('trash')}</button>`}</div></div>`;
     };
-    return ['Sessions', `<div class="btnrow sesstop"><button class="btn" data-go="new">${icon('plus')}<span>New session</span></button></div>
+    return ['Sessions', `<div class="btnrow sesstop"><button class="btn" data-go="new">${icon('plus')}<span>New session</span></button><button class="btn ghost" data-go="import">${icon('upload')}<span>Import</span></button><button class="btn ghost" data-go="backup">${icon('download')}<span>Back up all</span></button></div>
+      ${importMsg && !importMsg.ok ? `<ul class="imprep" role="status">${importMsg.lines.map(l => `<li class="note badn">${esc(l)}</li>`).join('')}</ul>` : ''}
       ${lib.length > 4 ? `<label class="fld"><span class="vh">Search sessions</span><input type="search" data-sessq="1" value="${esc(sessQ)}" placeholder="Search ${lib.length} sessions"></label>` : ''}
       <div class="sessgrid">${lib.map(card).join('')}</div><p class="empty sessnone" hidden>No sessions match that search.</p>
-      <p class="note">Sessions save themselves on this device as you work. To move one to another device, use Share board file.</p>`];
+      <p class="note">Sessions save themselves on this device as you work. Back up all saves every session in one file; Import opens it on another device.</p>`];
   },
   branding: () => ['Branding', `
     <label class="fld"><span>Board name</span><input data-brand="name" maxlength="32" value="${esc(brand.name)}" placeholder="${DEFAULT_BRAND}" data-autofocus></label>
@@ -2505,10 +2626,19 @@ const SHEETS = {
       ? `<div class="confirm" role="group" aria-label="Delete ${esc(b.name)}"><p><b>Delete “${esc(b.name)}”?</b></p><p class="ed">It’s removed from this device for good. The board you have open stays as it is.</p><div class="btnrow"><button class="btn ghost" data-canceldel="${esc(b.id)}">Keep board</button><button class="btn ghost danger" data-confirmdel="${esc(b.id)}">Delete board</button></div></div>`
       : `<div class="brow"><button class="row" data-openboard="${esc(b.id)}"><span><b>${esc(b.name)}</b><small>${new Date(b.updated).toLocaleDateString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}, ${b.doc.steps.length} slide${b.doc.steps.length > 1 ? 's' : ''}</small></span></button><button class="ib" data-delboard="${esc(b.id)}" aria-label="Delete ${esc(b.name)}">${icon('trash')}</button></div>`).join('')}</div>`];
   },
-  new: () => ['New session', `<div class="list">${row('newblank', 'Blank pitch', 'Keeps your floor and board view')}${row('newkick', 'Kick-off, 11 v 11', '4-3-3 against 4-4-2')}${row('newstadium', 'Stadium line-up, 11 v 11', 'Both teams under the floodlights')}${row('newdemo', 'Demo: breaking the first line', 'Three animated slides')}</div><p class="note">The session you have open is already saved. Find it again in Sessions.</p>`],
+  import: () => ['Import boards', `
+    <div class="dropzone" data-drop="1">${icon('upload')}<b>Board files from this device</b><small>A single board or a pack of several, saved from 3-2-5 (.json)</small><button class="btn" data-go="pickfiles" data-autofocus>${icon('upload')}<span>Choose files</span></button></div>
+    ${importMsg ? `<ul class="imprep" role="status">${importMsg.lines.map(l => `<li class="note ${importMsg.ok ? 'okn' : 'badn'}">${esc(l)}</li>`).join('')}</ul>` : ''}
+    <h3>Or paste board text</h3>
+    <textarea class="json" data-impta aria-label="Board file text" placeholder="Paste the text from Share board file"></textarea>
+    <div class="btnrow"><button class="btn ghost" data-go="importpaste">Import text</button></div>
+    <p class="note">Imported boards are added to Sessions and the first one opens. The board you have open now stays saved. On a computer you can also drop files anywhere on the board.</p>`],
+  new: () => ['New session', `<div class="list">${row('newblank', 'Blank pitch', 'Keeps your floor and board view')}${row('newkick', 'Kick-off, 11 v 11', '4-3-3 against 4-4-2')}${row('newstadium', 'Stadium line-up, 11 v 11', 'Both teams under the floodlights')}${row('newdemo', 'Demo: breaking the first line', 'Three animated slides')}</div><div class="list">${row('import', 'Import from this device', 'Board files or a game-model pack')}</div><p class="note">The session you have open is already saved. Find it again in Sessions.</p>`],
   help: () => ['Gestures and shortcuts', `<dl class="help">
     <dt>Move</dt><dd>Drag any player, ball, arrow or zone. Tap to select, double-tap a player to rename it.</dd>
     <dt>Slides</dt><dd>Press + to copy the current slide, move players, then press play. Players glide between slides, new drawings animate in (arrows grow, zones are traced, text writes itself) and dotted trails show where each player came from. Choose how and when in Pitch and view. With reduced motion turned on, play cuts between slides and keeps the trails visible.</dd>
+    <dt>Slide order</dt><dd>Hold a slide number, then drag it left or right and let go. With a mouse, just drag it. With the keyboard, focus a slide and press Alt with an arrow key.</dd>
+    <dt>Import</dt><dd>Board menu, then Import boards: choose board files or a game-model pack from this device, paste board text, or drop files onto the board on a computer. Back up all in Sessions saves every session in one file.</dd>
     <dt>Slide view</dt><dd>Each slide keeps its own zoom. Pinch with two fingers, use the zoom buttons in the corner, or hold Ctrl or ⌘ and scroll. Once zoomed in, pinch or scroll to pan. The camera glides between slides when you play, change slide or export. Tap the percentage to see the whole pitch again.</dd>
     <dt>Stadium</dt><dd>In Pitch and view, switch the board view to Stadium to film any floor under the floodlights, and drag the camera angle from straight down to low and dramatic. Everything still lands exactly under your finger, and arrows and zones lie flat on the grass.</dd>
     <dt>Arrows that follow players</dt><dd>Start or finish an arrow on a player and it stays attached when that player moves or animates. Drag the white middle handle to bend it.</dd>
@@ -2552,7 +2682,7 @@ const SHEETS = {
       <div class="btnrow"><button class="btn" data-go="expsave"${k && !expBusy ? '' : ' disabled'}>${icon('download')}<span>${k > 1 ? `Save ${k} images` : 'Save image'}</span></button>${canShareFiles() ? `<button class="btn ghost" data-go="expshare"${k && !expBusy ? '' : ' disabled'}>${icon('share')}<span>Share</span></button>` : ''}</div>
       ${msg}<div id="expInline"></div>`];
   },
-  json: () => ['Share board file', `<p class="note">File saving isn't available here, so copy this text and send it. Anyone can open it with “Open board file”.</p><textarea class="json" readonly aria-label="Board file text">${esc(JSON.stringify(doc))}</textarea><div class="btnrow"><button class="btn" data-go="copyjson">${icon('copy')}<span>Copy board text</span></button></div>`]
+  json: () => ['Share board file', `<p class="note">File saving isn't available here, so copy this text and send it. Anyone can open it with Import boards, then Or paste board text.</p><textarea class="json" readonly aria-label="Board file text">${esc(JSON.stringify(doc))}</textarea><div class="btnrow"><button class="btn" data-go="copyjson">${icon('copy')}<span>Copy board text</span></button></div>`]
 };
 function renderSheet() {
   const [title, body] = SHEETS[sheetKind](sheetArg);
@@ -2596,7 +2726,7 @@ function saveToLib(silent) {
   const i = lib.findIndex(b => b.id === doc.id);
   if (i >= 0) { entry.name = doc.meta.title || lib[i].name; lib.splice(i, 1); }
   lib.unshift(entry);
-  const ok = store.set('hs.lib', lib.slice(0, 60));
+  const ok = store.set('hs.lib', lib.slice(0, LIBMAX));
   if (!silent) toast(ok ? 'Saved to my boards' : 'Couldn’t save: storage isn’t available in this browser.');
   return ok;
 }
@@ -2676,7 +2806,10 @@ $('#sheetBody').addEventListener('click', e => {
       textDraft = null; closeSheet(); break;
     }
     case 'exportjson': exportJSON(); break;
-    case 'import': closeSheet(); $('#fileIn').click(); break;
+    case 'import': importMsg = null; openSheet('import'); break;
+    case 'pickfiles': $('#fileIn').click(); break;
+    case 'importpaste': importPasted(); break;
+    case 'backup': backupAll(); break;
     case 'copyjson': {
       const ta = $('#sheetBody textarea'); ta.select();
       const done = () => { b.innerHTML = `${icon('check')}<span>Copied</span>`; };
@@ -2700,6 +2833,8 @@ $('#sheetBody').addEventListener('input', e => {
   }
 });
 $('#sheetBody').addEventListener('change', e => { if (e.target.dataset.fr) commit(); });
+['dragenter', 'dragover'].forEach(ev => $('#sheetBody').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('.dropzone'); if (z) z.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => $('#sheetBody').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('.dropzone'); if (z) z.classList.remove('over'); }));
 let imgSide = 'a';
 async function processImage(file) {
   const url = URL.createObjectURL(file);
@@ -2724,11 +2859,110 @@ $('#imgIn').addEventListener('change', async e => {
     toast(doc.labelPos === 'under' ? `${imgSide === 'a' ? 'Team A' : 'Team B'} image added` : `${imgSide === 'a' ? 'Team A' : 'Team B'} image added. Labels are hidden on image tokens.`, doc.labelPos === 'under' ? null : { label: 'Show under', fn: () => setSetting('labelPos', 'under') });
   } catch (err) { toast('That image couldn’t be read. Try a PNG or JPG.'); }
 });
+
+/* ---------- import: board files and game-model packs from this device ---------- */
+let importMsg = null;
+// Accepts one board, a pack ({ boards: [...] }), a list of boards, or a saved session entry.
+function boardsIn(data) {
+  const out = [];
+  const take = (o, name) => {
+    if (!o || typeof o !== 'object') return;
+    if (Array.isArray(o.steps)) out.push({ raw: o, name: name || (o.meta && o.meta.title) || '' });
+    else if (o.doc && Array.isArray(o.doc.steps)) out.push({ raw: o.doc, name: o.name || (o.doc.meta && o.doc.meta.title) || name || '' });
+  };
+  if (Array.isArray(data)) data.forEach(o => take(o));
+  else if (data && Array.isArray(data.boards)) data.boards.forEach(o => take(o));
+  else take(data);
+  return out.slice(0, 80);
+}
+function importText(text, fname) {
+  let data;
+  try { data = JSON.parse(String(text).replace(/^﻿/, '').trim()); } catch (e) { return { error: `${fname || 'That text'} isn’t a board file.` }; }
+  const found = boardsIn(data);
+  if (!found.length) return { error: `${fname || 'That text'} has no boards in it.` };
+  const base = (fname || '').replace(/\.(json|325|txt)$/i, '').replace(/[-_]+/g, ' ').trim();
+  return { boards: found.map(({ raw, name }, k) => {
+    const d = normalizeDoc(raw);
+    const nm = String(name || d.meta.title || (found.length > 1 ? `${base || 'Imported board'} ${k + 1}` : base || 'Imported board')).slice(0, 80);
+    if (!d.meta.title) d.meta.title = nm;
+    return { d, name: nm };
+  }) };
+}
+// Adds boards to Sessions in their original order, never replacing a different board.
+function addToLibrary(list) {
+  flushLib(); saveToLib(true);
+  const lib = store.get('hs.lib') || [], now = Date.now(), added = [];
+  let same = 0;
+  list.forEach(({ d, name }) => {
+    const prev = lib.find(b => b.id === d.id);
+    if (prev) { if (JSON.stringify(prev.doc.steps) === JSON.stringify(d.steps)) { same++; added.push({ id: prev.id, name: prev.name, dup: true }); return; } d.id = uid(); }
+    added.push({ id: d.id, name, d });
+  });
+  const fresh = added.filter(a => !a.dup);
+  if (lib.length + fresh.length > LIBMAX) return { error: `Sessions can hold ${LIBMAX} boards and this would make ${lib.length + fresh.length}. Delete some sessions first.` };
+  // Keep the pack's order on top: the first board is the most recent.
+  for (let k = fresh.length - 1; k >= 0; k--) lib.unshift({ id: fresh[k].id, name: fresh[k].name, updated: now - k, doc: fresh[k].d });
+  if (!store.set('hs.lib', lib.slice(0, LIBMAX))) return { error: 'This device’s storage is full, so the boards couldn’t be added. Delete old sessions or team images first.' };
+  return { added, same };
+}
+function readFile(file) {
+  return new Promise((res, rej) => {
+    if (file.size > 8e6) { rej(new Error('big')); return; }
+    const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(r.error); r.readAsText(file);
+  });
+}
+async function importFiles(files) {
+  files = [...(files || [])]; if (!files.length) return;
+  const all = [], bad = [];
+  for (const f of files) {
+    try { const res = importText(await readFile(f), f.name); if (res.error) bad.push(res.error); else all.push(...res.boards); }
+    catch (e) { bad.push(`${f.name} couldn’t be read${e && e.message === 'big' ? ': it’s larger than 8 MB' : ''}.`); }
+  }
+  finishImport(all, bad);
+}
+function finishImport(all, bad) {
+  if (!all.length) { importMsg = { ok: false, lines: bad.length ? bad : ['No boards were found.'] }; if (sheetKind === 'import') renderSheet(); else openSheet('import'); return; }
+  const res = addToLibrary(all);
+  if (res.error) { importMsg = { ok: false, lines: [res.error, ...bad] }; if (sheetKind === 'import') renderSheet(); else openSheet('import'); return; }
+  const first = res.added[0], n = res.added.length;
+  const lib = store.get('hs.lib') || [], entry = lib.find(b => b.id === first.id);
+  importMsg = null;
+  if (entry && first.id !== doc.id) {
+    const d = normalizeDoc(entry.doc); d.id = entry.id;
+    switchDoc(d, n === 1 ? (first.dup ? `${first.name} is already in Sessions, opened it` : `Imported ${first.name}`) : `Imported ${n} boards. Opened ${first.name}.`);
+  } else toast(n === 1 ? `${first.name} is already open` : `Imported ${n} boards`);
+  // Opening the first board re-saves the previous one on top; put the imported boards back above it, in order.
+  const order = res.added.map(a => a.id), L = store.get('hs.lib') || [];
+  const top = order.map(id => L.find(b => b.id === id)).filter(Boolean), rest = L.filter(b => !order.includes(b.id));
+  store.set('hs.lib', [...top, ...rest].slice(0, LIBMAX));
+  if (n > 1 || bad.length) { if (bad.length) importMsg = { ok: false, lines: bad }; openSheet('sessions'); }
+}
+function importPasted() {
+  const ta = $('#sheetBody [data-impta]'), txt = ta ? ta.value.trim() : '';
+  if (!txt) { importMsg = { ok: false, lines: ['Paste the text of a board file first.'] }; renderSheet(); return; }
+  const res = importText(txt, '');
+  if (res.error) { importMsg = { ok: false, lines: ['That text isn’t a board file. Copy all of it from Share board file.'] }; renderSheet(); return; }
+  finishImport(res.boards, []);
+}
+// Every session in one pack file: a backup, or a set of boards to hand to another coach.
+async function backupAll() {
+  flushLib(); saveToLib(true);
+  const lib = libList();
+  const pack = { app: '3-2-5', kind: 'pack', v: 1, created: new Date().toISOString(), boards: lib.map(b => ({ name: b.name, doc: b.doc })) };
+  const day = new Date().toISOString().slice(0, 10), name = `3-2-5-sessions-${day}.json`;
+  const r = await saveFile(new Blob([JSON.stringify(pack)], { type: 'application/json' }), name);
+  toast(r === 'saved' ? `Saved ${lib.length} session${lib.length > 1 ? 's' : ''} as ${name}` : r === 'declined' ? 'Backup cancelled' : 'Files can’t be saved from here. Use Share board file for one board at a time.');
+}
+// Drag files from the desktop onto the board.
+let dropDepth = 0;
+const hasFiles = e => e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
+window.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); dropDepth++; document.body.classList.add('dropping'); });
+window.addEventListener('dragover', e => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+window.addEventListener('dragleave', e => { if (!hasFiles(e)) return; if (--dropDepth <= 0) { dropDepth = 0; document.body.classList.remove('dropping'); } });
+window.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); dropDepth = 0; document.body.classList.remove('dropping'); importFiles(e.dataTransfer.files); });
 $('#fileIn').addEventListener('change', e => {
-  const file = e.target.files && e.target.files[0]; if (!file) return;
-  const r = new FileReader();
-  r.onload = () => { try { const d = normalizeDoc(JSON.parse(r.result)); d.id = uid(); switchDoc(d, `Opened ${file.name}`); } catch (err) { toast('That file isn’t a board file. Choose a .json exported from this app.'); } };
-  r.readAsText(file); e.target.value = '';
+  const files = [...(e.target.files || [])]; e.target.value = '';
+  importFiles(files);
 });
 
 /* ---------- export ---------- */
