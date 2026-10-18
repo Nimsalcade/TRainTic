@@ -167,6 +167,16 @@ body.dropping::after{content:'Drop board files to import them';position:fixed;in
 .stepx{display:grid;place-items:center;width:var(--control-height-md);padding:0;border:0;background:none;border-radius:0 var(--radius-control) var(--radius-control) 0;color:var(--accent-strong);box-shadow:inset 1px 0 0 var(--accent-divider)}
 .stepx .ic{width:16px;height:16px}
 .step .bar{position:absolute;left:var(--space-2);right:var(--space-2);bottom:5px;height:2px;border-radius:2px;background:var(--accent);transform-origin:left;transform:scaleX(0)}
+.spd.mode{min-width:auto;padding:0 var(--space-3)}
+.spd.mode[aria-pressed="true"]{border-color:var(--accent);color:var(--accent-strong);background:var(--accent-subtle)}
+#taphint{position:absolute;left:50%;bottom:16px;z-index:6;transform:translate(-50%,8px);display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:999px;background:rgba(10,12,15,.78);color:#fff;font-size:13px;font-weight:500;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+#taphint.on{opacity:1;transform:translate(-50%,0)}
+#taphint.busy{opacity:.45}
+#taphint b{font-variant-numeric:tabular-nums;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.14);font-weight:600}
+#taphint i{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none}
+#taphint.wait i{animation:tappulse 1.4s ease-in-out infinite}
+@keyframes tappulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.55)}60%{box-shadow:0 0 0 7px rgba(255,255,255,0)}}
+@media (prefers-reduced-motion:reduce){#taphint,#taphint.on{transition:none;transform:translate(-50%,0)}#taphint.wait i{animation:none}}
 .spd{height:var(--control-height-md);min-width:var(--control-height-md);padding:0 var(--space-2);border-radius:var(--radius-control);border:1px solid var(--border);background:none;font-weight:500;font-size:var(--text-sm);flex:none;font-variant-numeric:tabular-nums}
 #opts{display:flex;align-items:center;gap:var(--space-2);height:56px;padding:0 var(--space-2);overflow-x:auto;scrollbar-width:none;border-top:1px solid var(--border-subtle)}
 #opts::-webkit-scrollbar{display:none}
@@ -612,7 +622,7 @@ const TEAMKEYS = [['a', 'Team A'], ['b', 'Team B'], ['gkA', 'Keeper A'], ['gkB',
 /* ---------- document ---------- */
 function blankDoc() {
   return { v: 1, id: uid(), meta: { title: '', duration: '', notes: '' }, theme: 'neon', view: 'full', overlay: 'none', orient: 'auto',
-    size: 1, cam: 40, stadium: false, labels: 'label', labelPos: 'in', onion: true, speed: 1, loop: false, drawAnim: 'draw', drawTime: 'first', teams: { a: null, b: null, gkA: null, gkB: null }, teamImg: { a: null, b: null },
+    size: 1, cam: 40, stadium: false, labels: 'label', labelPos: 'in', onion: true, speed: 1, loop: false, drawAnim: 'draw', drawTime: 'first', playMode: 'auto', teams: { a: null, b: null, gkA: null, gkB: null }, teamImg: { a: null, b: null },
     form: { a: { key: '4-3-3', h: 0, w: 1 }, b: { key: '4-4-2', h: 0, w: 1 } }, steps: [{ items: [] }], cur: 0 };
 }
 const LIBMAX = 150;
@@ -665,6 +675,7 @@ function normalizeDoc(o) {
   d.onion = d.onion !== false; d.loop = !!d.loop;
   d.drawAnim = d.drawAnim === 'fade' ? 'fade' : 'draw';
   d.drawTime = d.drawTime === 'with' ? 'with' : 'first';
+  d.playMode = d.playMode === 'tap' ? 'tap' : 'auto';
   if (!Array.isArray(d.steps) || !d.steps.length) d.steps = [{ items: [] }];
   d.steps = d.steps.slice(0, 60).map(s => { const o = { items: (s && Array.isArray(s.items) ? s.items : []).map(sanitizeItem).filter(Boolean) }, v = sanitizeView(s && s.view); if (v) o.view = v; return o; });
   d.cur = clamp(d.cur | 0, 0, d.steps.length - 1);
@@ -1799,7 +1810,11 @@ function onDown(e) {
   if (ptrs.size === 2 && e.pointerType === 'touch' && !playing && baseVB) { startPinch(); return; }
   if (drag) return;
   if (e.button > 0) return;
-  if (playing) { stopPlay(); return; }
+  if (playing) {
+    if (playing.tap) { const r = stage.getBoundingClientRect(); (e.clientX - r.left < r.width * .18 && doc.cur > 0) ? playBack() : playNext(); }
+    else stopPlay();
+    return;
+  }
   const p = toPitch(e);
   const hEl = e.target.closest('[data-h]'), iEl = e.target.closest('#items [data-id]');
   const hit = iEl ? getItem(iEl.dataset.id) : null;
@@ -2057,38 +2072,66 @@ function play() {
   sel = null; group.clear(); selMode = null; polyDraft = null;
   let i = doc.cur >= n - 1 ? 0 : doc.cur, phase = 'intro', t0 = performance.now();
   doc.cur = i; cancelAnimationFrame(viewAnim); dispView = null; applyCam(); reveal = null;
-  playing = { raf: 0 };
+  playing = { raf: 0, tap: doc.playMode === 'tap', next: false, back: false, skip: false };
   stage.classList.add('playing');
   renderAll();
   if (!reduceMotion() && introDur(i)) renderItems(revealList(items(), 0), {});
+  const hint = () => setTapHint(playing && playing.tap ? { i, n: doc.steps.length, busy: phase !== 'hold' } : null);
+  hint();
   const tick = now => {
     if (!playing) return;
+    if (playing.skip) { playing.skip = false; t0 = -1e9; if (phase !== 'hold') { playing.next = false; playing.back = false; } }
     // Reduced motion: no travel. Each step cuts in after the same total time, and the dotted trails show who moved.
     const still = reduceMotion(), spd = doc.speed, hold = (still ? 2050 : 650) / spd, trans = 1400 / spd, el = now - t0;
     const showStep = () => renderItems(items(), { ghost: still && doc.onion });
     if (phase === 'intro') {
       const d = still ? 0 : introDur(i);
-      if (el >= d) { phase = 'hold'; t0 = now; showStep(); }
+      if (el >= d) { phase = 'hold'; t0 = now; showStep(); hint(); }
       else renderItems(revealList(doc.steps[i].items, el / d), {});
     } else if (phase === 'hold') {
-      if (el >= hold) {
-        if (i >= doc.steps.length - 1) { if (doc.loop) { i = 0; doc.cur = 0; t0 = now; phase = 'intro'; applyCam(); updateSteps(); if (!still && introDur(0)) renderItems(revealList(items(), 0), {}); else showStep(); } else { stopPlay(); return; } }
-        else { phase = 'move'; t0 = now; }
+      if (playing.tap && playing.back) {
+        playing.back = false;
+        if (i > 0) { i--; doc.cur = i; t0 = now; phase = 'intro'; applyCam(); updateSteps(); updateTop(); if (!still && introDur(i)) renderItems(revealList(items(), 0), {}); else showStep(); hint(); }
+      }
+      const go = playing.tap ? playing.next : el >= hold;
+      if (playing.tap) playing.next = false;
+      if (go) {
+        if (i >= doc.steps.length - 1) { if (doc.loop) { i = 0; doc.cur = 0; t0 = now; phase = 'intro'; applyCam(); updateSteps(); if (!still && introDur(0)) renderItems(revealList(items(), 0), {}); else showStep(); hint(); } else { stopPlay(); return; } }
+        else { phase = 'move'; t0 = now; hint(); }
       }
     } else {
       const t = still ? 1 : Math.min(1, el / (moveDur(i) || trans));
       if (!still) { renderItems(interp(doc.steps[i].items, doc.steps[i + 1].items, t), {}); dispView = lerpView(viewOf(i), viewOf(i + 1), ease(t)); applyCam(); }
       const bar = document.querySelector(`.step[data-step="${i + 1}"] .bar`); if (bar) bar.style.transform = `scaleX(${t})`;
-      if (t >= 1) { i++; doc.cur = i; dispView = null; applyCam(); phase = 'hold'; t0 = now; showStep(); updateSteps(); updateTop(); }
+      if (t >= 1) { i++; doc.cur = i; dispView = null; applyCam(); phase = 'hold'; t0 = now; showStep(); updateSteps(); updateTop(); hint(); }
     }
     playing.raf = requestAnimationFrame(tick);
   };
   playing.raf = requestAnimationFrame(tick);
 }
+// Tap mode controls: next plays the move (or finishes one that's running); back returns to the previous slide.
+function playNext() { if (!playing) return; if (!playing.tap) { stopPlay(); return; } playing.next = true; playing.skip = true; }
+function playBack() { if (!playing || !playing.tap) return; playing.skip = true; playing.back = true; }
+const tapHint = document.createElement('div');
+tapHint.id = 'taphint'; tapHint.setAttribute('role', 'status'); tapHint.setAttribute('aria-live', 'polite');
+stage.appendChild(tapHint);
+function setTapHint(o) {
+  if (!o) { tapHint.className = ''; return; }
+  const last = o.i >= o.n - 1, touchy = matchMedia('(pointer:coarse)').matches;
+  const msg = o.busy ? 'Playing' : last ? (doc.loop ? `${touchy ? 'Tap' : 'Click'} to start again` : `${touchy ? 'Tap' : 'Click'} to finish`) : `${touchy ? 'Tap the board' : 'Click or press Space'} for slide ${o.i + 2}`;
+  tapHint.innerHTML = `<i aria-hidden="true"></i><span>${msg}</span><b>${o.i + 1} / ${o.n}</b>`;
+  tapHint.className = 'on' + (o.busy ? ' busy' : ' wait');
+}
 function stopPlay() {
   if (!playing) return;
+  setTapHint(null);
   cancelAnimationFrame(playing.raf); playing = null; dispView = null; applyCam();
   stage.classList.remove('playing'); quietSnap(); renderAll();
+}
+function setPlayMode(m) {
+  const was = !!playing; if (was) stopPlay();
+  doc.playMode = m === 'tap' ? 'tap' : 'auto'; persist(); updateSteps(); if (sheetKind === 'pitch') renderSheet();
+  toast(doc.playMode === 'tap' ? 'Tap mode: press play, then tap the board for each slide' : 'Auto mode: play runs every slide on its own');
 }
 function addStep() {
   stopPlay();
@@ -2302,7 +2345,7 @@ function updateSteps() {
     const on = i === doc.cur;
     h += `<span class="stepw${on ? ' on' : ''}"><button class="step" data-step="${i}" data-rove tabindex="${on ? 0 : -1}"${on ? ' aria-current="step"' : ''} aria-label="Slide ${i + 1}" title="Slide ${i + 1}. Hold and drag to reorder">${i + 1}<i class="bar" aria-hidden="true"></i></button>${on && n > 1 && !playing ? `<button class="stepx" data-delstep="${i}" aria-label="Delete slide ${i + 1}">${icon('close')}</button>` : ''}</span>`;
   }
-  h += `</div><button class="ib" id="btnAddStep" aria-label="Add slide" title="Add slide">${icon('plus')}</button><button class="spd" id="btnSpeed" aria-label="Playback speed ${doc.speed}×">${doc.speed}×</button><button class="ib" id="btnLoop" aria-label="Loop playback" aria-pressed="${doc.loop}">${icon('loop')}</button><button class="ib" id="btnFocus" aria-label="Hide toolbars" title="Full-screen pitch (F)">${icon('expand')}</button>`;
+  h += `</div><button class="ib" id="btnAddStep" aria-label="Add slide" title="Add slide">${icon('plus')}</button><button class="spd mode" id="btnMode" aria-pressed="${doc.playMode === 'tap'}" aria-label="Play mode: ${doc.playMode === 'tap' ? 'tap for each slide' : 'auto'}" title="${doc.playMode === 'tap' ? 'Tap: each slide waits for a tap on the board' : 'Auto: plays every slide on its own'}">${doc.playMode === 'tap' ? 'Tap' : 'Auto'}</button><button class="spd" id="btnSpeed" aria-label="Playback speed ${doc.speed}×">${doc.speed}×</button><button class="ib" id="btnLoop" aria-label="Loop playback" aria-pressed="${doc.loop}">${icon('loop')}</button><button class="ib" id="btnFocus" aria-label="Hide toolbars" title="Full-screen pitch (F)">${icon('expand')}</button>`;
   setHTML($('#steps'), h);
   updateFbar();
 }
@@ -2316,6 +2359,7 @@ $('#steps').addEventListener('click', e => {
   else if (b.id === 'btnAddStep') addStep();
   else if (b.id === 'btnSpeed') { doc.speed = doc.speed === 1 ? 2 : doc.speed === 2 ? .5 : 1; persist(); updateSteps(); }
   else if (b.id === 'btnLoop') { doc.loop = !doc.loop; persist(); updateSteps(); }
+  else if (b.id === 'btnMode') { setPlayMode(doc.playMode === 'tap' ? 'auto' : 'tap'); const m = $('#btnMode'); if (m) m.focus({ preventScroll: true }); }
   else if (b.id === 'btnFocus') setFocus(true);
 });
 
@@ -2413,6 +2457,15 @@ $('#steps').addEventListener('touchmove', e => {
 }, { passive: false });
 $('#steps').addEventListener('touchend', () => { if (sdrag && sdrag.active) endSlideDrag(null, true); });
 $('#steps').addEventListener('contextmenu', e => e.preventDefault());
+// While a Tap-mode presentation runs, the keyboard and clickers drive it.
+window.addEventListener('keydown', e => {
+  if (!playing || !playing.tap || e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'textarea') return;
+  const k = e.key;
+  if (k === ' ' || k === 'Enter' || k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown') { e.preventDefault(); e.stopPropagation(); playNext(); }
+  else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp' || k === 'Backspace') { e.preventDefault(); e.stopPropagation(); playBack(); }
+  else if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); stopPlay(); }
+}, true);
 // Keyboard: Alt + arrow moves the focused slide.
 $('#steps').addEventListener('keydown', e => {
   if (!e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
@@ -2465,8 +2518,8 @@ $('#fbar').addEventListener('click', e => {
   const b = e.target.closest('[data-f]'); if (!b) return;
   switch (b.dataset.f) {
     case 'undo': undo(); break;
-    case 'prev': gotoStep(doc.cur - 1); break;
-    case 'next': gotoStep(doc.cur + 1); break;
+    case 'prev': playing && playing.tap ? playBack() : gotoStep(doc.cur - 1); break;
+    case 'next': playing && playing.tap ? playNext() : gotoStep(doc.cur + 1); break;
     case 'play': playing ? stopPlay() : play(); break;
     case 'exit': setFocus(false); break;
   }
@@ -2596,6 +2649,8 @@ const SHEETS = {
     <h3>Player labels</h3>${seg('labels', [['label', 'Position'], ['num', 'Number'], ['none', 'None']], doc.labels, 'data-set', 'Player labels')}
     <h3>Labels under tokens</h3>${seg('labelPos', [['under', 'On'], ['in', 'Off']], doc.labelPos, 'data-set', 'Labels under tokens')}
     <p class="note" style="margin-top:var(--space-2)">On moves every label to a tag under its token. Tokens with a crest or flag never show a label inside, so turn this on to keep their labels visible.</p>
+    <h3>Play mode</h3>${seg('playMode', [['auto', 'Auto'], ['tap', 'Tap for each slide']], doc.playMode, 'data-set', 'Play mode')}
+    <p class="note" style="margin-top:var(--space-2)">Auto plays every slide on its own. Tap shows each slide and waits: tap the board, click, or press Space or a presenter clicker to play the next move. Tap the left edge, or press the left arrow, to go back.</p>
     <h3>Movement trails between slides</h3>${seg('onion', [[true, 'Show'], [false, 'Hide']], doc.onion, 'data-set', 'Movement trails between slides')}
     <h3>Drawing animation</h3>${seg('drawAnim', [['draw', 'Draw on'], ['fade', 'Fade in']], doc.drawAnim, 'data-set', 'Drawing animation')}
     <h3>When drawings appear</h3>${seg('drawTime', [['first', 'Draw, then move'], ['with', 'With the players']], doc.drawTime, 'data-set', 'When drawings appear')}
@@ -2637,6 +2692,7 @@ const SHEETS = {
   help: () => ['Gestures and shortcuts', `<dl class="help">
     <dt>Move</dt><dd>Drag any player, ball, arrow or zone. Tap to select, double-tap a player to rename it.</dd>
     <dt>Slides</dt><dd>Press + to copy the current slide, move players, then press play. Players glide between slides, new drawings animate in (arrows grow, zones are traced, text writes itself) and dotted trails show where each player came from. Choose how and when in Pitch and view. With reduced motion turned on, play cuts between slides and keeps the trails visible.</dd>
+    <dt>Play mode</dt><dd>The Auto / Tap button beside the speed switches how play runs. Auto plays every slide on its own. Tap waits on each slide: tap the board, click, or press Space, the right arrow or a presenter clicker for the next move; tap the left edge or press the left arrow to go back; Esc stops.</dd>
     <dt>Slide order</dt><dd>Hold a slide number, then drag it left or right and let go. With a mouse, just drag it. With the keyboard, focus a slide and press Alt with an arrow key.</dd>
     <dt>Import</dt><dd>Board menu, then Import boards: choose board files or a game-model pack from this device, paste board text, or drop files onto the board on a computer. Back up all in Sessions saves every session in one file.</dd>
     <dt>Slide view</dt><dd>Each slide keeps its own zoom. Pinch with two fingers, use the zoom buttons in the corner, or hold Ctrl or ⌘ and scroll. Once zoomed in, pinch or scroll to pan. The camera glides between slides when you play, change slide or export. Tap the percentage to see the whole pitch again.</dd>
@@ -2701,6 +2757,7 @@ function setSetting(k, v) {
   doc[k] = v; persist();
   if (['theme', 'view', 'orient', 'overlay', 'stadium'].includes(k)) { applyView(); renderPitch(); }
   if (k === 'stadium' && v && !wasSt) flyCamera();
+  if (k === 'playMode' && playing) stopPlay();
   // Preview the choice on the slide that's open.
   if (k === 'drawAnim' || k === 'drawTime') startReveal(new Set(items().filter(it => DRAWN[it.type]).map(i => i.id)));
   renderAll(); updateOpts();
