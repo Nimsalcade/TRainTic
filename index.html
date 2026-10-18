@@ -596,7 +596,7 @@ const TEAMKEYS = [['a', 'Team A'], ['b', 'Team B'], ['gkA', 'Keeper A'], ['gkB',
 /* ---------- document ---------- */
 function blankDoc() {
   return { v: 1, id: uid(), meta: { title: '', duration: '', notes: '' }, theme: 'neon', view: 'full', overlay: 'none', orient: 'auto',
-    size: 1, cam: 40, stadium: false, labels: 'label', labelPos: 'in', onion: true, speed: 1, loop: false, teams: { a: null, b: null, gkA: null, gkB: null }, teamImg: { a: null, b: null },
+    size: 1, cam: 40, stadium: false, labels: 'label', labelPos: 'in', onion: true, speed: 1, loop: false, drawAnim: 'draw', drawTime: 'first', teams: { a: null, b: null, gkA: null, gkB: null }, teamImg: { a: null, b: null },
     form: { a: { key: '4-3-3', h: 0, w: 1 }, b: { key: '4-4-2', h: 0, w: 1 } }, steps: [{ items: [] }], cur: 0 };
 }
 const NUMK = ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'bend', 'w', 'h', 'r', 'ang', 'len', 'spread', 'rot', 'size', 'num', 'si', 'alpha'];
@@ -646,6 +646,8 @@ function normalizeDoc(o) {
   d.size = clamp(+d.size || 1, .5, 2);
   d.speed = [.5, 1, 2].includes(+d.speed) ? +d.speed : 1;
   d.onion = d.onion !== false; d.loop = !!d.loop;
+  d.drawAnim = d.drawAnim === 'fade' ? 'fade' : 'draw';
+  d.drawTime = d.drawTime === 'with' ? 'with' : 'first';
   if (!Array.isArray(d.steps) || !d.steps.length) d.steps = [{ items: [] }];
   d.steps = d.steps.slice(0, 60).map(s => { const o = { items: (s && Array.isArray(s.items) ? s.items : []).map(sanitizeItem).filter(Boolean) }, v = sanitizeView(s && s.view); if (v) o.view = v; return o; });
   d.cur = clamp(d.cur | 0, 0, d.steps.length - 1);
@@ -1351,6 +1353,7 @@ function drawKit(it) {
 }
 function drawArrow(it, map) {
   const t = T(), st = it.style || 'pass', c = it.color || (st === 'run' ? (t.runc || t.draw) : t.draw);
+  if (it._prog != null && it._prog <= .001) return '';
   const g = arrowGeom(it, map); if (g.len < .3) return '';
   const prog = it._prog != null ? Math.max(.02, it._prog) : 1;
   const { pts, L } = sample(g, st === 'dribble' ? .1 : .35, prog);
@@ -1383,14 +1386,51 @@ function fillFor(it, c, defs) {
   }
   return `fill="${c}" fill-opacity=".2"`;
 }
+// The first fraction p of a polyline, by length.
+function partial(pts, p) {
+  if (p >= 1) return pts;
+  let L = 0; const seg = [];
+  for (let i = 1; i < pts.length; i++) { const d = dist(pts[i - 1], pts[i]); seg.push(d); L += d; }
+  let need = L * p; const out = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const d = seg[i - 1];
+    if (need >= d) { out.push(pts[i]); need -= d; continue; }
+    const k = d ? need / d : 0;
+    out.push({ x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * k, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * k });
+    break;
+  }
+  return out;
+}
+// A zone being drawn in: a pen traces the outline, then the fill washes in behind it.
+function drawShapeIn(it, map, defs) {
+  const p = it._prog, c = it.color || T().draw, dash = it.hatch || it.type === 'poly' ? '' : ' stroke-dasharray="1 .6"';
+  const ps = clamp01(p / .7), pf = ease(clamp01((p - .25) / .75));
+  let ring, fill;
+  if (it.type === 'rect') {
+    const r = normRect(it); ring = rectPts(r.x, r.y, r.x + r.w, r.y + r.h); ring.push(ring[0]);
+    fill = PJ ? `<path d="${gD(ring)}Z" ${fillFor(it, c, defs)}/>` : `<rect x="${f(r.x)}" y="${f(r.y)}" width="${f(r.w)}" height="${f(r.h)}" rx=".45" ${fillFor(it, c, defs)}/>`;
+  } else if (it.type === 'circle') {
+    const R = Math.max(.1, it.r); ring = circPts(it.x, it.y, R, -Math.PI / 2, Math.PI * 1.5, 64);
+    fill = PJ ? `<path d="${gD(ring)}Z" ${fillFor(it, c, defs)}/>` : `<circle cx="${f(it.x)}" cy="${f(it.y)}" r="${f(R)}" ${fillFor(it, c, defs)}/>`;
+  } else {
+    const q = resolvePts(it, map); ring = [...q, q[0]];
+    fill = `<path d="${gD(q)}Z" ${fillFor(it, c, defs)}/>`;
+  }
+  const part = partial(ring, ps), end = part[part.length - 1], tip = PP(end.x, end.y);
+  let s = pf > .001 ? `<g opacity="${f(pf)}">${fill}</g>` : '';
+  s += `<path d="${gD(part)}" fill="none" stroke="${c}" stroke-width="${it.type === 'poly' ? '.24' : '.22'}" stroke-linecap="round" stroke-linejoin="round"${dash}/>`;
+  if (ps < 1) s += `<circle cx="${f(tip.x)}" cy="${f(tip.y)}" r="${f(.32 * tip.s)}" fill="${c}"/>`;
+  return `<g data-id="${it.id}"${op(it)}>${s}</g>`;
+}
 function drawShape(it, map, defs) {
+  if (it._prog != null && it._prog < 1) { if (it._prog <= .001) return ''; if (it.type !== 'shadow') return drawShapeIn(it, map, defs); }
   const c = it.color || T().draw, dash = it.hatch ? '' : ' stroke-dasharray="1 .6"';
   let s = '';
   if (it.type === 'rect') { const r = normRect(it); s = PJ ? `<path d="${gD(rectPts(r.x, r.y, r.x + r.w, r.y + r.h))}Z" ${fillFor(it, c, defs)} stroke="${c}" stroke-width=".22" stroke-linejoin="round"${dash}/>` : `<rect x="${f(r.x)}" y="${f(r.y)}" width="${f(r.w)}" height="${f(r.h)}" rx=".45" ${fillFor(it, c, defs)} stroke="${c}" stroke-width=".22"${dash}/>`; }
   else if (it.type === 'circle') s = PJ ? `<path d="${gD(circPts(it.x, it.y, Math.max(.1, it.r)))}Z" ${fillFor(it, c, defs)} stroke="${c}" stroke-width=".22"${dash}/>` : `<circle cx="${f(it.x)}" cy="${f(it.y)}" r="${f(Math.max(.1, it.r))}" ${fillFor(it, c, defs)} stroke="${c}" stroke-width=".22"${dash}/>`;
   else if (it.type === 'poly') { const p = resolvePts(it, map); s = `<path d="${gD(p)}Z" ${fillFor(it, c, defs)} stroke="${c}" stroke-width=".24" stroke-linejoin="round"/>`; }
   else if (it.type === 'shadow') {
-    const a = apexOf(it, map), sp = (it.spread || 20) * Math.PI / 180, L = Math.max(.1, it.len);
+    const pg = it._prog != null ? it._prog : 1, a = apexOf(it, map), sp = (it.spread || 20) * Math.PI / 180 * (.35 + .65 * pg), L = Math.max(.1, it.len * pg);
     const a1 = { x: a.x + Math.cos(it.ang - sp) * L, y: a.y + Math.sin(it.ang - sp) * L }, a2 = { x: a.x + Math.cos(it.ang + sp) * L, y: a.y + Math.sin(it.ang + sp) * L };
     const id = 'sg' + it.id, q = PP(a.x, a.y);
     defs.set(id, `<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${f(q.x)}" cy="${f(q.y)}" r="${f(L * q.s)}"><stop offset="0" stop-color="${c}" stop-opacity=".5"/><stop offset="1" stop-color="${c}" stop-opacity=".03"/></radialGradient>`);
@@ -1399,13 +1439,26 @@ function drawShape(it, map, defs) {
   }
   return `<g data-id="${it.id}"${op(it)}>${s}</g>`;
 }
-function drawText(it) {
-  const c = it.color || T().text, b = textBox(it);
+function drawText(it, defs) {
+  const c = it.color || T().text, b = textBox(it), pg = it._prog;
+  if (pg != null && pg <= .001) return '';
+  // Writing in: the label's box appears, then each line wipes in left to right, one after another.
+  const writing = pg != null && pg < 1 && defs;
   let s = '';
   if (b.box) s += (PJ || doc.theme === 'venue') ? `<rect x="${f(-b.w / 2)}" y="${f(-b.h / 2)}" width="${f(b.w)}" height="${f(b.h)}" rx=".3" fill="#0B0C0F" fill-opacity=".9" stroke="${c}" stroke-opacity=".55" stroke-width=".1"/>` : `<rect x="${f(-b.w / 2)}" y="${f(-b.h / 2)}" width="${f(b.w)}" height="${f(b.h)}" rx=".3" fill="#2A2D31" fill-opacity=".9"/>`;
   else s += `<rect x="${f(-b.w / 2)}" y="${f(-b.h / 2)}" width="${f(b.w)}" height="${f(b.h)}" fill="transparent"/>`;
+  if (writing) s = `<g opacity="${f(ease(clamp01(pg / .3)))}">${s}</g>`;
+  let words = '';
   const outline = b.box ? '' : ` paint-order="stroke" stroke="${lum(c) > .45 ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.75)'}" stroke-width="${f(b.fs * .18)}"`;
-  b.lines.forEach((l, i) => { const yc = -b.h / 2 + b.fs * .275 + b.lh * (i + .5); s += `<text y="${f(yc + b.fs * .35)}" font-size="${f(b.fs)}" fill="${c}" ${TXT}${outline}>${esc(l)}</text>`; });
+  const pw = writing ? clamp01((pg - .12) / .88) * b.lines.length : 0;
+  let clip = '';
+  b.lines.forEach((l, i) => {
+    const yc = -b.h / 2 + b.fs * .275 + b.lh * (i + .5);
+    words += `<text y="${f(yc + b.fs * .35)}" font-size="${f(b.fs)}" fill="${c}" ${TXT}${outline}>${esc(l)}</text>`;
+    if (writing) { const li = clamp01(pw - i), lw = measure(l, b.fs) + b.fs * .7; if (li > 0) clip += `<rect x="${f(-lw / 2)}" y="${f(yc - b.lh * .6)}" width="${f(lw * li)}" height="${f(b.lh * 1.2)}"/>`; }
+  });
+  if (writing) { const id = 'tw' + it.id; defs.set(id, `<clipPath id="${id}">${clip || '<rect width="0" height="0"/>'}</clipPath>`); words = `<g clip-path="url(#${id})">${words}</g>`; }
+  s += words;
   return `<g data-id="${it.id}" transform="${atT(it.x, it.y, it.rot || 0)}"${op(it)}>${s}</g>`;
 }
 function drawItem(it, map, defs) {
@@ -1414,7 +1467,7 @@ function drawItem(it, map, defs) {
     case 'ball': return drawBall(it);
     case 'kit': return drawKit(it);
     case 'arrow': return drawArrow(it, map);
-    case 'text': return drawText(it);
+    case 'text': return drawText(it, defs);
     default: return drawShape(it, map, defs);
   }
 }
@@ -1586,7 +1639,13 @@ function renderItems(list, o = {}) {
 }
 let lastBenchCount = 0;
 function renderItemsNow() {
-  renderItems(items(), { ghost: !playing, ui: !playing });
+  let list = items();
+  if (reveal) {
+    const p = (performance.now() - reveal.t0) / reveal.ms;
+    if (p >= 1 || playing || drag || reveal.step !== doc.cur) reveal = null;
+    else { list = revealList(list, p, reveal.ids); scheduleRender(); }
+  }
+  renderItems(list, { ghost: !playing, ui: !playing && !reveal });
   if (lastBench.size !== lastBenchCount) { lastBenchCount = lastBench.size; if (typeof updateOpts === 'function') updateOpts(); }
 }
 let rafPending = false;
@@ -1918,43 +1977,90 @@ function finishPoly() {
 
 /* ---------- steps & playback ---------- */
 const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+/* Drawings animate in rather than appearing: arrows grow from their start, zones are traced then filled,
+   cover shadows sweep open and text writes itself in. Several drawings go one after another, in the order
+   they were drawn. "Draw, then move" finishes the drawings before the players set off. */
+const DRAWN = { arrow: 1, rect: 1, circle: 1, poly: 1, shadow: 1, text: 1 };
+const revealMs = n => Math.min(2200, 900 + 170 * Math.max(0, n - 1));
+function movePlan(A, B) {
+  const ma = new Set(A.map(i => i.id)), n = B.filter(b => DRAWN[b.type] && !ma.has(b.id)).length;
+  if (!n || doc.drawTime === 'with') return { ms: 1400, d1: .8, m0: 0, n };
+  const dr = revealMs(n), ms = dr * .9 + 1400;
+  return { ms, d1: dr / ms, m0: dr * .9 / ms, n };
+}
+const moveDur = i => movePlan(doc.steps[i].items, doc.steps[i + 1].items).ms / doc.speed;
+function introDur(i) { const n = doc.steps[i].items.filter(it => DRAWN[it.type]).length; return n ? revealMs(n) / doc.speed : 0; }
+function stagger(j, n, p) {
+  if (n <= 1) return p;
+  const w = Math.max(.34, 1 / (1 + (n - 1) * .45));
+  return clamp01((p - j * (1 - w) / (n - 1)) / w);
+}
+function revealItem(o, p) { if (doc.drawAnim === 'fade') o._op = ease(p); else o._prog = ease(p); return o; }
+function revealList(list, p, ids) {
+  if (p >= 1) return list;
+  const pick = it => DRAWN[it.type] && (!ids || ids.has(it.id)), n = list.filter(pick).length; let j = 0;
+  return list.map(it => pick(it) ? revealItem({ ...it }, stagger(j++, n, p)) : it);
+}
+// t is linear time through the transition, 0 to 1.
 function interp(A, B, t) {
+  const P = movePlan(A, B), km = ease(clamp01((t - P.m0) / (1 - P.m0))), kd = clamp01(t / P.d1), kf = clamp01(t / (P.m0 ? Math.max(.12, P.d1 * .5) : .45));
   const ma = new Map(A.map(i => [i.id, i])), mb = new Map(B.map(i => [i.id, i])), out = [];
   for (const a of A) {
     const b = mb.get(a.id);
     if (b) {
       const o = { ...b };
-      for (const k of NUMK) if (k !== 'num' && k !== 'si' && typeof a[k] === 'number' && typeof b[k] === 'number') o[k] = a[k] + (b[k] - a[k]) * t;
-      if (a.type === 'shadow' && b.type === 'shadow') { let dd = b.ang - a.ang; while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI; o.ang = a.ang + dd * t; }
-      if (a.pts && b.pts && a.pts.length === b.pts.length) o.pts = a.pts.map((p, j) => ({ ...b.pts[j], x: p.x + (b.pts[j].x - p.x) * t, y: p.y + (b.pts[j].y - p.y) * t }));
+      for (const k of NUMK) if (k !== 'num' && k !== 'si' && typeof a[k] === 'number' && typeof b[k] === 'number') o[k] = a[k] + (b[k] - a[k]) * km;
+      if (a.type === 'shadow' && b.type === 'shadow') { let dd = b.ang - a.ang; while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI; o.ang = a.ang + dd * km; }
+      if (a.pts && b.pts && a.pts.length === b.pts.length) o.pts = a.pts.map((p, j) => ({ ...b.pts[j], x: p.x + (b.pts[j].x - p.x) * km, y: p.y + (b.pts[j].y - p.y) * km }));
       out.push(o);
-    } else out.push({ ...a, _op: 1 - Math.min(1, t * 2.2) });
+    } else out.push({ ...a, _op: 1 - kf });
   }
-  for (const b of B) if (!ma.has(b.id)) { const o = { ...b, _op: Math.min(1, t * 1.8) }; if (b.type === 'arrow') { o._prog = ease(Math.min(1, t * 1.2)); o._op = 1; } out.push(o); }
+  let j = 0;
+  for (const b of B) if (!ma.has(b.id)) {
+    if (DRAWN[b.type]) out.push(revealItem({ ...b }, stagger(j++, P.n, kd)));
+    else out.push({ ...b, _op: P.m0 ? kd : Math.min(1, km * 1.8) });
+  }
   return out;
+}
+// Stepping to a slide by hand draws in what's new on it; the players simply take their places.
+let reveal = null;
+function startReveal(ids) {
+  if (reduceMotion() || !ids || !ids.size) { reveal = null; return; }
+  reveal = { ids, t0: performance.now(), ms: Math.min(1500, 650 + 130 * (ids.size - 1)) / doc.speed, step: doc.cur };
+  scheduleRender();
+}
+function newDrawings(fromI, toI) {
+  const prev = new Set(doc.steps[fromI].items.map(i => i.id));
+  return new Set(doc.steps[toI].items.filter(it => DRAWN[it.type] && !prev.has(it.id)).map(i => i.id));
 }
 function play() {
   const n = doc.steps.length;
   if (n < 2) { toast('Add a second slide, move some players, then press play.'); return; }
   sel = null; group.clear(); selMode = null; polyDraft = null;
-  let i = doc.cur >= n - 1 ? 0 : doc.cur, phase = 'hold', t0 = performance.now();
-  doc.cur = i; cancelAnimationFrame(viewAnim); dispView = null; applyCam();
+  let i = doc.cur >= n - 1 ? 0 : doc.cur, phase = 'intro', t0 = performance.now();
+  doc.cur = i; cancelAnimationFrame(viewAnim); dispView = null; applyCam(); reveal = null;
   playing = { raf: 0 };
   stage.classList.add('playing');
   renderAll();
+  if (!reduceMotion() && introDur(i)) renderItems(revealList(items(), 0), {});
   const tick = now => {
     if (!playing) return;
     // Reduced motion: no travel. Each step cuts in after the same total time, and the dotted trails show who moved.
     const still = reduceMotion(), spd = doc.speed, hold = (still ? 2050 : 650) / spd, trans = 1400 / spd, el = now - t0;
     const showStep = () => renderItems(items(), { ghost: still && doc.onion });
-    if (phase === 'hold') {
+    if (phase === 'intro') {
+      const d = still ? 0 : introDur(i);
+      if (el >= d) { phase = 'hold'; t0 = now; showStep(); }
+      else renderItems(revealList(doc.steps[i].items, el / d), {});
+    } else if (phase === 'hold') {
       if (el >= hold) {
-        if (i >= doc.steps.length - 1) { if (doc.loop) { i = 0; doc.cur = 0; t0 = now; showStep(); applyCam(); updateSteps(); } else { stopPlay(); return; } }
+        if (i >= doc.steps.length - 1) { if (doc.loop) { i = 0; doc.cur = 0; t0 = now; phase = 'intro'; applyCam(); updateSteps(); if (!still && introDur(0)) renderItems(revealList(items(), 0), {}); else showStep(); } else { stopPlay(); return; } }
         else { phase = 'move'; t0 = now; }
       }
     } else {
-      const t = still ? 1 : Math.min(1, el / trans);
-      if (!still) { renderItems(interp(doc.steps[i].items, doc.steps[i + 1].items, ease(t)), {}); dispView = lerpView(viewOf(i), viewOf(i + 1), ease(t)); applyCam(); }
+      const t = still ? 1 : Math.min(1, el / (moveDur(i) || trans));
+      if (!still) { renderItems(interp(doc.steps[i].items, doc.steps[i + 1].items, t), {}); dispView = lerpView(viewOf(i), viewOf(i + 1), ease(t)); applyCam(); }
       const bar = document.querySelector(`.step[data-step="${i + 1}"] .bar`); if (bar) bar.style.transform = `scaleX(${t})`;
       if (t >= 1) { i++; doc.cur = i; dispView = null; applyCam(); phase = 'hold'; t0 = now; showStep(); updateSteps(); updateTop(); }
     }
@@ -1983,8 +2089,10 @@ function deleteStep(i) {
 }
 function gotoStep(i) {
   stopPlay(); flushViewCommit();
-  const from = dispView || viewOf(doc.cur);
-  doc.cur = clamp(i, 0, doc.steps.length - 1); sel = null; group.clear(); selMode = null; polyDraft = null; quietSnap(); renderAll();
+  const from = dispView || viewOf(doc.cur), fromI = doc.cur;
+  doc.cur = clamp(i, 0, doc.steps.length - 1); sel = null; group.clear(); selMode = null; polyDraft = null; quietSnap();
+  reveal = null; if (fromI !== doc.cur) startReveal(newDrawings(fromI, doc.cur));
+  renderAll();
   animateViewTo(viewOf(doc.cur), from);
 }
 
@@ -2367,7 +2475,10 @@ const SHEETS = {
     <h3>Player labels</h3>${seg('labels', [['label', 'Position'], ['num', 'Number'], ['none', 'None']], doc.labels, 'data-set', 'Player labels')}
     <h3>Labels under tokens</h3>${seg('labelPos', [['under', 'On'], ['in', 'Off']], doc.labelPos, 'data-set', 'Labels under tokens')}
     <p class="note" style="margin-top:var(--space-2)">On moves every label to a tag under its token. Tokens with a crest or flag never show a label inside, so turn this on to keep their labels visible.</p>
-    <h3>Movement trails between slides</h3>${seg('onion', [[true, 'Show'], [false, 'Hide']], doc.onion, 'data-set', 'Movement trails between slides')}`],
+    <h3>Movement trails between slides</h3>${seg('onion', [[true, 'Show'], [false, 'Hide']], doc.onion, 'data-set', 'Movement trails between slides')}
+    <h3>Drawing animation</h3>${seg('drawAnim', [['draw', 'Draw on'], ['fade', 'Fade in']], doc.drawAnim, 'data-set', 'Drawing animation')}
+    <h3>When drawings appear</h3>${seg('drawTime', [['first', 'Draw, then move'], ['with', 'With the players']], doc.drawTime, 'data-set', 'When drawings appear')}
+    <p class="note" style="margin-top:var(--space-2)">New arrows, zones, shadows and text animate in when a slide plays, one after another in the order you drew them. Draw, then move finishes them before the players set off.</p>`],
   teams: () => ['Teams', TEAMKEYS.map(([k, l]) => {
     const sw = `<div class="sws" role="radiogroup" aria-label="${l} colour" data-roving="select"><button class="swauto" ${radio(!doc.teams[k])} data-team="${k}" data-c="">Style default</button>${TEAMPAL.map(c => `<button class="sw" ${radio(doc.teams[k] === c)} data-team="${k}" data-c="${c}" style="--c:${c}" aria-label="${cname(c)}"></button>`).join('')}</div>`;
     if (k !== 'a' && k !== 'b') return `<h3>${l} colour</h3>${sw}`;
@@ -2397,7 +2508,7 @@ const SHEETS = {
   new: () => ['New session', `<div class="list">${row('newblank', 'Blank pitch', 'Keeps your floor and board view')}${row('newkick', 'Kick-off, 11 v 11', '4-3-3 against 4-4-2')}${row('newstadium', 'Stadium line-up, 11 v 11', 'Both teams under the floodlights')}${row('newdemo', 'Demo: breaking the first line', 'Three animated slides')}</div><p class="note">The session you have open is already saved. Find it again in Sessions.</p>`],
   help: () => ['Gestures and shortcuts', `<dl class="help">
     <dt>Move</dt><dd>Drag any player, ball, arrow or zone. Tap to select, double-tap a player to rename it.</dd>
-    <dt>Slides</dt><dd>Press + to copy the current slide, move players, then press play. Players glide between slides, new arrows draw themselves in and dotted trails show where each player came from. With reduced motion turned on, play cuts between slides and keeps the trails visible.</dd>
+    <dt>Slides</dt><dd>Press + to copy the current slide, move players, then press play. Players glide between slides, new drawings animate in (arrows grow, zones are traced, text writes itself) and dotted trails show where each player came from. Choose how and when in Pitch and view. With reduced motion turned on, play cuts between slides and keeps the trails visible.</dd>
     <dt>Slide view</dt><dd>Each slide keeps its own zoom. Pinch with two fingers, use the zoom buttons in the corner, or hold Ctrl or ⌘ and scroll. Once zoomed in, pinch or scroll to pan. The camera glides between slides when you play, change slide or export. Tap the percentage to see the whole pitch again.</dd>
     <dt>Stadium</dt><dd>In Pitch and view, switch the board view to Stadium to film any floor under the floodlights, and drag the camera angle from straight down to low and dramatic. Everything still lands exactly under your finger, and arrows and zones lie flat on the grass.</dd>
     <dt>Arrows that follow players</dt><dd>Start or finish an arrow on a player and it stays attached when that player moves or animates. Drag the white middle handle to bend it.</dd>
@@ -2460,6 +2571,8 @@ function setSetting(k, v) {
   doc[k] = v; persist();
   if (['theme', 'view', 'orient', 'overlay', 'stadium'].includes(k)) { applyView(); renderPitch(); }
   if (k === 'stadium' && v && !wasSt) flyCamera();
+  // Preview the choice on the slide that's open.
+  if (k === 'drawAnim' || k === 'drawTime') startReveal(new Set(items().filter(it => DRAWN[it.type]).map(i => i.id)));
   renderAll(); updateOpts();
   if (k === 'view') {
     if (sheetKind) closeSheet();
@@ -2801,18 +2914,21 @@ async function exportImages(share) {
 function timeline() {
   const n = doc.steps.length, spd = doc.speed, segs = [];
   let t = 0;
+  const intro = introDur(0);
+  if (intro) { segs.push({ t0: 0, t1: intro, i: 0, move: false, intro: true }); t = intro; }
   for (let i = 0; i < n; i++) {
-    const h = (i === 0 ? 900 : i === n - 1 ? 1300 : 700) / spd;
+    const h = (i === 0 ? (intro ? 700 : 900) : i === n - 1 ? 1300 : 700) / spd;
     segs.push({ t0: t, t1: t + h, i, move: false }); t += h;
-    if (i < n - 1) { segs.push({ t0: t, t1: t + 1400 / spd, i, move: true }); t += 1400 / spd; }
+    if (i < n - 1) { const m = moveDur(i); segs.push({ t0: t, t1: t + m, i, move: true }); t += m; }
   }
   return { segs, total: t };
 }
 function frameAt(tl, t) {
   const s = tl.segs.find(q => t < q.t1) || tl.segs[tl.segs.length - 1];
+  const r = clamp((t - s.t0) / (s.t1 - s.t0), 0, 1), k = ease(r);
+  if (s.intro) return { items: revealList(doc.steps[0].items, r), view: viewOf(0), cur: 0 };
   if (!s.move) return { items: doc.steps[s.i].items, view: viewOf(s.i), cur: s.i };
-  const k = ease(clamp((t - s.t0) / (s.t1 - s.t0), 0, 1));
-  return { items: interp(doc.steps[s.i].items, doc.steps[s.i + 1].items, k), view: lerpView(viewOf(s.i), viewOf(s.i + 1), k), cur: k < .5 ? s.i : s.i + 1 };
+  return { items: interp(doc.steps[s.i].items, doc.steps[s.i + 1].items, r), view: lerpView(viewOf(s.i), viewOf(s.i + 1), k), cur: k < .5 ? s.i : s.i + 1 };
 }
 function stampFrame(ctx, VW, VH, cur, logo) {
   const u = Math.min(VW, VH) / 720, pad = Math.round(22 * u), n = doc.steps.length, fs = Math.round(20 * u);
@@ -2868,7 +2984,7 @@ async function recordVideo(q, onProg, cancelled) {
   let lastKey = null, lastBlob = null, lastCur = 0;
   for (let fi = 0; fi < N; fi++) {
     if (cancelled()) { renderItemsNow(); return null; }
-    const t = Math.min(tl.total, fi * 1000 / FPS), sg = tl.segs.find(x => t < x.t1) || tl.segs[tl.segs.length - 1], key = sg.move ? null : 'h' + sg.i;
+    const t = Math.min(tl.total, fi * 1000 / FPS), sg = tl.segs.find(x => t < x.t1) || tl.segs[tl.segs.length - 1], key = sg.move || sg.intro ? null : 'h' + sg.i;
     if (key === null || key !== lastKey) {
       lastCur = await draw(t);
       lastBlob = await new Promise(r => cv.toBlob(r, 'image/jpeg', .92)); lastKey = key;
