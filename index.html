@@ -168,6 +168,30 @@ b,strong,h1,h2,h3{font-weight:500}
 .imprep li{display:flex;gap:8px;align-items:center}
 .imprep .ic{width:16px;height:16px;flex:none}
 body.dropping::after{content:'Drop board files to import them';position:fixed;inset:12px;z-index:90;display:grid;place-items:center;border:2px dashed var(--accent);border-radius:18px;background:rgba(10,12,15,.55);color:#fff;font-weight:600;font-size:18px;pointer-events:none}
+.stepw.sec{margin-left:9px}
+.stepw.sec::before{content:'';position:absolute;left:-7px;top:9px;bottom:9px;width:2px;border-radius:2px;background:var(--border-strong)}
+#notes{position:absolute;left:var(--space-3);top:var(--space-3);bottom:var(--space-3);width:var(--notes-w,340px);display:none;flex-direction:column;background:var(--surface-raised);border:1px solid var(--border-subtle);border-radius:var(--radius-panel);box-shadow:var(--shadow-floating);z-index:3;overflow:hidden}
+#notes.on{display:flex}
+#notes .nh{display:flex;align-items:flex-start;gap:var(--space-2);padding:var(--space-4) var(--space-2) var(--space-3) var(--space-4);border-bottom:1px solid var(--border-subtle)}
+#notes .nh div{flex:1;min-width:0}
+#notes .nh small{display:block;font-size:var(--text-xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-strong);margin-bottom:4px}
+#notes .nh b{display:block;font-size:var(--text-lg);line-height:1.3;font-weight:600}
+#notes .nh em{display:block;font-style:normal;font-size:var(--text-xs);color:var(--text-muted);margin-top:4px;font-variant-numeric:tabular-nums}
+#notes .nb{flex:1;overflow-y:auto;padding:var(--space-3) var(--space-4) var(--space-4);font-size:var(--text-sm);line-height:1.55;color:var(--text-secondary);-webkit-user-select:text;user-select:text}
+#notes .nb p{margin:0 0 var(--space-2)}
+#notes .nb h4{margin:var(--space-3) 0 var(--space-1);font-size:var(--text-xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--foreground)}
+#notes .nb h4:first-child{margin-top:0}
+#notes .nb ul{margin:0 0 var(--space-2);padding-left:1.1em}
+#notes .nb li{margin:0 0 3px}
+#notes .nb .empty{color:var(--text-muted)}
+.fld textarea.notes{min-height:220px}
+.fld select{width:100%;min-height:var(--control-height-md);padding:0 var(--space-3);border-radius:var(--radius-control);border:1px solid var(--border-strong);background:var(--surface);color:var(--foreground);font:400 var(--text-base)/1.45 var(--font-body)}
+.toc{margin-top:var(--space-2);border:1px solid var(--border-subtle);border-radius:var(--radius-panel);overflow:hidden}
+.tocsec{padding:var(--space-3) var(--space-4) var(--space-1);font-size:var(--text-xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-strong);background:var(--surface-muted)}
+.tocrow{display:flex;align-items:center;gap:var(--space-3);width:100%;min-height:var(--control-height-md);padding:var(--space-2) var(--space-4);border:0;border-top:1px solid var(--border-subtle);background:none;text-align:left}
+.tocrow .n{min-width:2.2em;color:var(--text-muted);font-variant-numeric:tabular-nums;font-size:var(--text-sm)}
+.tocrow.on{background:var(--accent-subtle);color:var(--accent-strong)}
+.tocrow.on .n{color:var(--accent-strong)}
 .stepx{display:grid;place-items:center;width:var(--control-height-md);padding:0;border:0;background:none;border-radius:0 var(--radius-control) var(--radius-control) 0;color:var(--accent-strong);box-shadow:inset 1px 0 0 var(--accent-divider)}
 .stepx .ic{width:16px;height:16px}
 .step .bar{position:absolute;left:var(--space-2);right:var(--space-2);bottom:5px;height:2px;border-radius:2px;background:var(--accent);transform-origin:left;transform:scaleX(0)}
@@ -635,10 +659,10 @@ const TEAMKEYS = [['a', 'Team A'], ['b', 'Team B'], ['gkA', 'Keeper A'], ['gkB',
 /* ---------- document ---------- */
 function blankDoc() {
   return { v: 1, id: uid(), meta: { title: '', duration: '', notes: '' }, theme: 'neon', view: 'full', overlay: 'none', orient: 'auto',
-    size: 1, cam: 40, stadium: false, labels: 'label', labelPos: 'in', onion: true, speed: 1, loop: false, drawAnim: 'draw', drawTime: 'first', playMode: 'auto', teams: { a: null, b: null, gkA: null, gkB: null }, teamImg: { a: null, b: null },
+    size: 1, cam: 40, stadium: false, labels: 'label', labelPos: 'in', onion: true, notesPanel: true, speed: 1, loop: false, drawAnim: 'draw', drawTime: 'first', playMode: 'auto', teams: { a: null, b: null, gkA: null, gkB: null }, teamImg: { a: null, b: null },
     form: { a: { key: '4-3-3', h: 0, w: 1 }, b: { key: '4-4-2', h: 0, w: 1 } }, steps: [{ items: [] }], cur: 0 };
 }
-const LIBMAX = 150;
+const LIBMAX = 150, MAXSTEPS = 250;
 const NUMK = ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'bend', 'w', 'h', 'r', 'ang', 'len', 'spread', 'rot', 'size', 'num', 'si', 'alpha'];
 function sanitizeItem(i) {
   if (!i || typeof i !== 'object' || RANK[i.type] == null) return null;
@@ -690,7 +714,8 @@ function normalizeDoc(o) {
   d.drawTime = d.drawTime === 'with' ? 'with' : 'first';
   d.playMode = d.playMode === 'tap' ? 'tap' : 'auto';
   if (!Array.isArray(d.steps) || !d.steps.length) d.steps = [{ items: [] }];
-  d.steps = d.steps.slice(0, 60).map(s => { const o = { items: (s && Array.isArray(s.items) ? s.items : []).map(sanitizeItem).filter(Boolean) }, v = sanitizeView(s && s.view); if (v) o.view = v; return o; });
+  d.steps = d.steps.slice(0, MAXSTEPS).map(s => { const o = { items: (s && Array.isArray(s.items) ? s.items : []).map(sanitizeItem).filter(Boolean) }, v = sanitizeView(s && s.view); if (v) o.view = v; if (s && typeof s.title === 'string' && s.title.trim()) o.title = s.title.slice(0, 100); if (s && typeof s.note === 'string' && s.note.trim()) o.note = s.note.slice(0, 3000); return o; });
+  d.notesPanel = d.notesPanel !== false;
   d.cur = clamp(d.cur | 0, 0, d.steps.length - 1);
   if (typeof d.id !== 'string' || !/^[\w-]{1,24}$/.test(d.id)) d.id = uid();
   return d;
@@ -982,13 +1007,16 @@ function layoutOverlays(skipFit) {
     const fine = !coarse.matches, showZoom = !focusMode && (fine || zoomed);
     zb.classList.toggle('off', !showZoom); zb.classList.toggle('vert', wide);
     app.classList.toggle('rail', focusMode && wide);
-    let it = 0, ir = 0, ib = 0;
+    let it = 0, ir = 0, ib = 0, il = 0;
+    const nw = r.width >= 1500 ? 380 : 330;
+    stage.style.setProperty('--notes-w', nw + 'px');
+    if (notesEl.classList.contains('on')) il = nw + 24;
     if (focusMode) { if (wide) ir = fb.offsetWidth + 24; else ib = fb.offsetHeight + 24; }
     else if (showZoom && fine) { if (wide) ir = zb.offsetWidth + 24; else it = zb.offsetHeight + 24; }
-    const key = `${it}|${ir}|${ib}`;
+    const key = `${it}|${ir}|${ib}|${il}`;
     if (key === stage.dataset.ins) return;
     stage.dataset.ins = key;
-    stage.style.setProperty('--it', it + 'px'); stage.style.setProperty('--ir', ir + 'px'); stage.style.setProperty('--ib', ib + 'px');
+    stage.style.setProperty('--it', it + 'px'); stage.style.setProperty('--ir', ir + 'px'); stage.style.setProperty('--ib', ib + 'px'); stage.style.setProperty('--il', il + 'px');
     if (!skipFit) { if (applyView()) renderPitch(); renderItemsNow(); }
   } finally { laying = false; }
 }
@@ -1729,6 +1757,7 @@ function commit() {
   const s = snap(); if (s === lastSnap) return;
   if (lastSnap) hist.push(lastSnap);
   if (hist.length > 120) hist.shift();
+  let bytes = s.length; for (let k = hist.length - 1; k >= 0; k--) { bytes += hist[k].length; if (bytes > 3e7) { hist.splice(0, k + 1); break; } }
   fut = []; lastSnap = s; persist(); updateTop();
 }
 function quietSnap() { lastSnap = snap(); persist(); }
@@ -2160,7 +2189,10 @@ function setPlayMode(m) {
 function addStep() {
   stopPlay();
   const v = doc.steps[doc.cur].view;
-  doc.steps.splice(doc.cur + 1, 0, v ? { items: clone(items()), view: { ...v } } : { items: clone(items()) });
+  const t = doc.steps[doc.cur].title, ns = v ? { items: clone(items()), view: { ...v } } : { items: clone(items()) };
+  if (t) ns.title = t;
+  if (doc.steps.length >= MAXSTEPS) { toast(`A board holds up to ${MAXSTEPS} slides. Start a new session for more.`); return; }
+  doc.steps.splice(doc.cur + 1, 0, ns);
   doc.cur++; sel = null; selMode = null; polyDraft = null; commit(); renderAll();
   toast(`Slide ${doc.cur + 1} added. Move players, then press play.`);
   revealChip(document.querySelector('.stepw.on'));
@@ -2178,6 +2210,7 @@ function gotoStep(i) {
   reveal = null; if (fromI !== doc.cur) startReveal(newDrawings(fromI, doc.cur));
   renderAll();
   animateViewTo(viewOf(doc.cur), from);
+  if (sheetKind === 'slide') renderSheet();
 }
 
 /* ---------- UI chrome ---------- */
@@ -2374,7 +2407,8 @@ function updateSteps() {
   let h = `<button class="play" id="btnPlay" aria-label="${playing ? 'Stop animation' : 'Play animation'}">${icon(playing ? 'stop' : 'play')}</button><div class="stepchips" role="group" aria-label="Slides" data-roving="select">`;
   for (let i = 0; i < n; i++) {
     const on = i === doc.cur;
-    h += `<span class="stepw${on ? ' on' : ''}"><button class="step" data-step="${i}" data-rove tabindex="${on ? 0 : -1}"${on ? ' aria-current="step"' : ''} aria-label="Slide ${i + 1}" title="Slide ${i + 1}. Hold and drag to reorder">${i + 1}<i class="bar" aria-hidden="true"></i></button>${on && n > 1 && !playing ? `<button class="stepx" data-delstep="${i}" aria-label="Delete slide ${i + 1}">${icon('close')}</button>` : ''}</span>`;
+    const tt = doc.steps[i].title || '', sc = secOf(tt), first = i > 0 && sc && sc !== secOf(doc.steps[i - 1].title);
+    h += `<span class="stepw${on ? ' on' : ''}${first ? ' sec' : ''}"><button class="step" data-step="${i}" data-rove tabindex="${on ? 0 : -1}"${on ? ' aria-current="step"' : ''} aria-label="Slide ${i + 1}${tt ? `: ${esc(tt)}` : ''}${on ? '. Open slide notes' : ''}" title="${tt ? esc(tt) + '. ' : ''}${on ? 'Tap for notes and contents' : `Slide ${i + 1}`}">${i + 1}<i class="bar" aria-hidden="true"></i></button>${on && n > 1 && !playing ? `<button class="stepx" data-delstep="${i}" aria-label="Delete slide ${i + 1}">${icon('close')}</button>` : ''}</span>`;
   }
   h += `</div><button class="ib" id="btnAddStep" aria-label="Add slide" title="Add slide">${icon('plus')}</button><button class="ib pbk${doc.playMode === 'tap' || doc.loop || doc.speed !== 1 ? ' set' : ''}" id="btnPlayback" aria-label="Playback: ${doc.playMode === 'tap' ? 'tap for each slide' : 'auto'}, ${doc.speed}×${doc.loop ? ', loop' : ''}" title="Playback">${icon('tune')}</button><button class="ib" id="btnFocus" aria-label="Hide toolbars" title="Full-screen pitch (F)">${icon('expand')}</button>`;
   setHTML($('#steps'), h);
@@ -2384,7 +2418,7 @@ $('#steps').addEventListener('click', e => {
   if (swallowClick) { swallowClick = false; e.preventDefault(); return; }
   const x = e.target.closest('[data-delstep]');
   if (x) { const kb = x === document.activeElement; deleteStep(+x.dataset.delstep); if (kb) { const s = $('#steps [aria-current="step"]'); if (s) s.focus({ preventScroll: true }); } return; }
-  const s = e.target.closest('[data-step]'); if (s) { gotoStep(+s.dataset.step); return; }
+  const s = e.target.closest('[data-step]'); if (s) { if (+s.dataset.step === doc.cur && !playing) openSheet('slide'); else gotoStep(+s.dataset.step); return; }
   const b = e.target.closest('button'); if (!b) return;
   if (b.id === 'btnPlay') playing ? stopPlay() : play();
   else if (b.id === 'btnAddStep') addStep();
@@ -2514,10 +2548,63 @@ $('#steps').addEventListener('keydown', e => {
   const i = +b.dataset.step; moveStep(i, i + (e.key === 'ArrowLeft' ? -1 : 1), true);
 }, true);
 
+/* ---------- slide titles, notes and sections ---------- */
+// "04 Box rondo — Set-up": the part before the dash is the section.
+const secOf = t => { t = t || ''; const k = t.indexOf(' — '); return k > 0 ? t.slice(0, k) : ''; };
+const subOf = t => { t = t || ''; const k = t.indexOf(' — '); return k > 0 ? t.slice(k + 3) : t; };
+const hasSections = () => doc.steps.some(st => secOf(st.title));
+function sectionRange(i) {
+  const n = doc.steps.length, sc = secOf(doc.steps[i] && doc.steps[i].title);
+  if (!sc) return [0, n - 1];
+  let a = i, b = i;
+  while (a > 0 && secOf(doc.steps[a - 1].title) === sc) a--;
+  while (b < n - 1 && secOf(doc.steps[b + 1].title) === sc) b++;
+  return [a, b];
+}
+// Light formatting for notes: "- " lines become bullets, short lines ending in ":" become headings.
+function noteHTML(t) {
+  const out = []; let list = null;
+  const flush = () => { if (list) { out.push(`<ul>${list.join('')}</ul>`); list = null; } };
+  for (const raw of String(t || '').split('\n')) {
+    const l = raw.trim();
+    if (!l) { flush(); continue; }
+    if (/^[-•·] /.test(l)) { (list = list || []).push(`<li>${esc(l.slice(2))}</li>`); continue; }
+    flush();
+    if (l.length <= 48 && /:$/.test(l)) out.push(`<h4>${esc(l.slice(0, -1))}</h4>`);
+    else out.push(`<p>${esc(l)}</p>`);
+  }
+  flush(); return out.join('');
+}
+const notesEl = document.createElement('aside');
+notesEl.id = 'notes'; notesEl.setAttribute('aria-label', 'Slide notes');
+stage.appendChild(notesEl);
+notesEl.addEventListener('click', e => { if (e.target.closest('[data-nx]')) { doc.notesPanel = false; persist(); renderNotes(); toast('Notes hidden. Tap the current slide to show them again.'); } });
+['pointerdown', 'touchstart', 'wheel'].forEach(ev => notesEl.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+let notesKey = '';
+function notesWanted() {
+  const st = doc.steps[doc.cur], r = stage.getBoundingClientRect();
+  return !!(doc.notesPanel !== false && st && (st.title || st.note) && r.width >= 1000);
+}
+function renderNotes() {
+  const st = doc.steps[doc.cur], on = notesWanted();
+  const key = on ? `${doc.cur}|${doc.steps.length}|${st.title || ''}|${st.note || ''}` : '';
+  if (key !== notesKey) {
+    notesKey = key;
+    if (on) {
+      const sc = secOf(st.title), sub = subOf(st.title);
+      notesEl.innerHTML = `<div class="nh"><div>${sc ? `<small>${esc(sc)}</small>` : ''}<b>${esc(sub || `Slide ${doc.cur + 1}`)}</b><em>Slide ${doc.cur + 1} of ${doc.steps.length}</em></div><button class="ib" data-nx="1" aria-label="Hide notes">${icon('close')}</button></div><div class="nb">${st.note ? noteHTML(st.note) : '<p class="empty">No notes for this slide.</p>'}</div>`;
+      notesEl.querySelector('.nb').scrollTop = 0;
+    }
+  }
+  notesEl.classList.toggle('on', on);
+  layoutOverlays();
+}
 function updateTop() {
   $('#ttlMain').textContent = doc.meta.title || 'Untitled board';
   $('#docH1').textContent = doc.meta.title || 'Untitled board';
-  $('#ttlSub').innerHTML = (doc.meta.duration ? `<span>${esc(doc.meta.duration)}</span>` : '') + `<span>Slide ${doc.cur + 1} of ${doc.steps.length}</span>`;
+  const stt = doc.steps[doc.cur] && doc.steps[doc.cur].title;
+  $('#ttlSub').innerHTML = (doc.meta.duration && !stt ? `<span>${esc(doc.meta.duration)}</span>` : '') + `<span>Slide ${doc.cur + 1} of ${doc.steps.length}</span>` + (stt ? `<span>${esc(stt)}</span>` : '');
+  renderNotes();
   $('#btnUndo').disabled = !hist.length; $('#btnRedo').disabled = !fut.length;
   if (focusMode) updateFbar();
 }
@@ -2565,6 +2652,7 @@ $('#fbar').addEventListener('click', e => {
     case 'play': playing ? stopPlay() : play(); break;
     case 'exit': setFocus(false); break;
     case 'fit': resetView(); break;
+    case 'notes': openSheet('slide'); break;
   }
 });
 function renderAll() { renderItemsNow(); updateSelbar(); updateSteps(); updateTop(); }
@@ -2617,15 +2705,24 @@ function openSheet(kind, arg) {
   if (sheetKind && sheetOnClose) { const cb = sheetOnClose; sheetOnClose = null; cb(); }
   if (!sheetKind) { const a = document.activeElement; sheetReturn = a && a !== document.body ? { el: a, key: focusKey(a) } : null; }
   if (kind !== sheetKind) { menuNote = {}; confirmDel = null; }
-  if (kind === 'export' && sheetKind !== 'export') { expSel = new Set(doc.steps.map((_, i) => i)); expThumbs = []; expMsg = null; inlineImgs = null; if (vid.url) URL.revokeObjectURL(vid.url); vid = { state: 'idle', q: vid.q || '720' }; }
+  if (kind === 'export' && sheetKind !== 'export') {
+    const [a, b] = hasSections() ? sectionRange(doc.cur) : [0, doc.steps.length - 1];
+    expSel = new Set(); for (let k = a; k <= b; k++) expSel.add(k);
+    expThumbs = []; expMsg = null; inlineImgs = null; if (vid.url) URL.revokeObjectURL(vid.url); vid = { state: 'idle', q: vid.q || '720', from: a, to: b };
+  }
   if (kind === 'sessions' && sheetKind !== 'sessions') { sessQ = ''; renaming = null; flushLib(); }
   sheetKind = kind; sheetArg = arg; textDraft = null;
   renderSheet(); $('#sheetBody').scrollTop = 0;
   const sh = $('#sheet'), sc = $('#scrim'); sh.hidden = false; sc.hidden = false;
   $('#app').inert = true;
-  requestAnimationFrame(() => { sh.classList.add('open'); sc.classList.add('open'); });
+  requestAnimationFrame(() => { sh.classList.add('open'); sc.classList.add('open'); if (kind === 'slide') setTimeout(scrollTocToCurrent, 60); });
   const first = sh.querySelector('textarea[data-te], input[data-autofocus]');
   if (first) setTimeout(() => { if (sheetKind) first.focus(); }, 280); else sh.focus({ preventScroll: true });
+}
+function scrollTocToCurrent() {
+  const row = $('#sheetBody .tocrow.on'), body = $('#sheetBody'); if (!row || !body) return;
+  const a = row.getBoundingClientRect(), b = body.getBoundingClientRect();
+  if (a.top < b.top || a.bottom > b.bottom) body.scrollTop += a.top - b.top - b.height / 3;
 }
 function closeSheet() {
   if (!sheetKind) return;
@@ -2651,7 +2748,7 @@ function miniForm(key) {
 }
 const SHEETS = {
   menu: () => ['Board', `
-    <div class="list">${row('sessions', 'Sessions', `${libList().length} on this device. Open one or start a new session`)}${row('session', 'Session details', 'Title, duration and coaching notes')}${row('dupsession', 'Duplicate this session', 'Keep a copy to try a variation', menuNote.dup)}</div>
+    <div class="list">${row('sessions', 'Sessions', `${libList().length} on this device. Open one or start a new session`)}${row('slidenotes', 'Slide notes and contents', 'Title and notes for this slide, and every slide in order')}${row('session', 'Session details', 'Title, duration and coaching notes')}${row('dupsession', 'Duplicate this session', 'Keep a copy to try a variation', menuNote.dup)}</div>
     <div class="list">${row('formation', 'Formations', 'Line-ups, block height and width')}${row('teams', 'Teams', 'Colours, crests and flags')}${row('pitch', 'Pitch and view', 'Stadium, floor, guides, labels')}${row('branding', 'Branding', 'Your board name, logo and colours')}</div>
     <div class="list">${row('export', 'Export slides', 'Images of the slides you pick, or a video')}${row('exportjson', 'Share board file', 'A file another coach can open here', menuNote.exportjson)}${row('import', 'Import boards', 'Board files or game-model packs from this device')}${row('help', 'Gestures and shortcuts', '')}</div>`],
   sessions: () => {
@@ -2719,6 +2816,25 @@ const SHEETS = {
       ? `<div class="confirm" role="group" aria-label="Delete ${esc(b.name)}"><p><b>Delete “${esc(b.name)}”?</b></p><p class="ed">It’s removed from this device for good. The board you have open stays as it is.</p><div class="btnrow"><button class="btn ghost" data-canceldel="${esc(b.id)}">Keep board</button><button class="btn ghost danger" data-confirmdel="${esc(b.id)}">Delete board</button></div></div>`
       : `<div class="brow"><button class="row" data-openboard="${esc(b.id)}"><span><b>${esc(b.name)}</b><small>${new Date(b.updated).toLocaleDateString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}, ${b.doc.steps.length} slide${b.doc.steps.length > 1 ? 's' : ''}</small></span></button><button class="ib" data-delboard="${esc(b.id)}" aria-label="Delete ${esc(b.name)}">${icon('trash')}</button></div>`).join('')}</div>`];
   },
+  slide: () => {
+    const st = doc.steps[doc.cur], n = doc.steps.length;
+    let toc = '', last = null;
+    if (n > 1) {
+      toc = '<h3>Contents</h3><div class="toc" role="list">';
+      doc.steps.forEach((x, i) => {
+        const sc = secOf(x.title);
+        if (sc && sc !== last) toc += `<div class="tocsec" role="presentation">${esc(sc)}</div>`;
+        last = sc;
+        toc += `<button class="tocrow${i === doc.cur ? ' on' : ''}" role="listitem" data-gostep="${i}"${i === doc.cur ? ' aria-current="step"' : ''}><span class="n">${i + 1}</span><span>${esc(subOf(x.title) || 'Untitled slide')}</span></button>`;
+      });
+      toc += '</div>';
+    }
+    return [`Slide ${doc.cur + 1} of ${n}`, `
+    <label class="fld"><span>Slide title</span><input data-sl="title" maxlength="100" value="${esc(st.title || '')}" placeholder="Rondo 4v1 — Set-up"></label>
+    <label class="fld"><span>Slide notes</span><textarea class="notes" data-sl="note" maxlength="3000" placeholder="Organisation, rules, coaching points, progressions">${esc(st.note || '')}</textarea></label>
+    <div class="seg"><button class="chip" aria-pressed="${doc.notesPanel !== false}" data-go="notespanel">Show notes beside the pitch on large screens</button></div>
+    ${toc}`];
+  },
   playback: () => ['Playback', `
     <h3>Slides</h3>${seg('playMode', [['auto', 'Play through'], ['tap', 'Tap for each slide']], doc.playMode, 'data-set', 'Slides')}
     <h3>Speed</h3>${seg('speed', [[.5, '0.5×'], [1, '1×'], [2, '2×']], doc.speed, 'data-set', 'Speed')}
@@ -2738,6 +2854,7 @@ const SHEETS = {
     <dt>Slides</dt><dd>Press + to copy the current slide, move players, then press play. Players glide between slides, new drawings animate in (arrows grow, zones are traced, text writes itself) and dotted trails show where each player came from. Choose how and when in Pitch and view. With reduced motion turned on, play cuts between slides and keeps the trails visible.</dd>
     <dt>Playback</dt><dd>The playback button beside + sets how slides play (through, or one tap per slide), the speed, looping and how drawings appear. In tap mode, tap the board or press Space, the right arrow or a presenter clicker for the next move; tap the left edge or press the left arrow to go back.</dd>
     <dt>Slide zoom</dt><dd>Pinch the board to zoom a slide, or use Ctrl or ⌘ with the scroll wheel. Tap the percentage to see the whole pitch again.</dd>
+    <dt>Slide notes</dt><dd>Tap the current slide number to give the slide a title and notes, and to see every slide in order. Titles written as “Section — Slide” group slides into sections. On a large screen the notes sit beside the pitch; exported images include them.</dd>
     <dt>Slide order</dt><dd>Hold a slide number, then drag it left or right and let go. With a mouse, just drag it. With the keyboard, focus a slide and press Alt with an arrow key.</dd>
     <dt>Import</dt><dd>Board menu, then Import boards: choose board files or a game-model pack from this device, paste board text, or drop files onto the board on a computer. Back up all in Sessions saves every session in one file.</dd>
     <dt>Slide view</dt><dd>Each slide keeps its own zoom. Pinch with two fingers, use the zoom buttons in the corner, or hold Ctrl or ⌘ and scroll. Once zoomed in, pinch or scroll to pan. The camera glides between slides when you play, change slide or export. Tap the percentage to see the whole pitch again.</dd>
@@ -2876,6 +2993,7 @@ $('#sheetBody').addEventListener('click', e => {
   if (ds.expframe) { expFrame = !expFrame; renderSheet(); return; }
   if (ds.delboard) { confirmDel = ds.delboard; renderSheet(); const k = $('#sheetBody [data-canceldel]'); if (k) k.focus({ preventScroll: true }); return; }
   if (ds.canceldel) { const id = ds.canceldel; confirmDel = null; renderSheet(); const t = $(`#sheetBody [data-delboard="${CSS.escape(id)}"]`); if (t) t.focus({ preventScroll: true }); return; }
+  if ('gostep' in ds) { closeSheet(); gotoStep(+ds.gostep); return; }
   if (ds.confirmdel) { const lib = (store.get('hs.lib') || []).filter(x => x.id !== ds.confirmdel); store.set('hs.lib', lib); confirmDel = null; renderSheet(); const n = $('#sheetBody .row, #sheetBody .btn'); if (n) n.focus({ preventScroll: true }); return; }
   switch (ds.go) {
     case 'boards': openSheet('sessions'); break;
@@ -2889,7 +3007,7 @@ $('#sheetBody').addEventListener('click', e => {
     case 'vidcancel': vidCancel = true; break;
     case 'vidsave': saveVideo(false); break;
     case 'vidshare': saveVideo(true); break;
-    case 'vidagain': if (vid.url) URL.revokeObjectURL(vid.url); vid = { state: 'idle', q: vid.q }; renderSheet(); break;
+    case 'vidagain': if (vid.url) URL.revokeObjectURL(vid.url); vid = { state: 'idle', q: vid.q, from: vid.from, to: vid.to }; renderSheet(); break;
     case 'save': {
       const ok = saveToLib(true);
       if (sheetKind === 'menu') menuNote.save = ok ? { ok: true, text: 'Saved just now' } : { ok: false, text: 'Couldn’t save. This browser blocks storage here.' };
@@ -2912,6 +3030,8 @@ $('#sheetBody').addEventListener('click', e => {
     case 'import': importMsg = null; openSheet('import'); break;
     case 'pickfiles': $('#fileIn').click(); break;
     case 'importpaste': importPasted(); break;
+    case 'notespanel': doc.notesPanel = doc.notesPanel === false; persist(); renderSheet(); renderNotes(); break;
+    case 'slidenotes': openSheet('slide'); break;
     case 'backup': backupAll(); break;
     case 'copyjson': {
       const ta = $('#sheetBody textarea'); ta.select();
@@ -2926,6 +3046,7 @@ $('#sheetBody').addEventListener('input', e => {
   const el = e.target, ds = el.dataset;
   if (ds.brand === 'name') { brand.name = el.value.trim().slice(0, 32) || DEFAULT_BRAND; saveBrand(); clearTimeout(ledT); ledT = setTimeout(renderPitch, 250); return; }
   if (ds.sessq) { sessQ = el.value; const q = sessQ.trim().toLowerCase(); let shown = 0; document.querySelectorAll('#sheetBody .scard').forEach(c => { c.hidden = !!q && !c.dataset.name.includes(q); if (!c.hidden) shown++; }); const no = $('#sheetBody .sessnone'); if (no) no.hidden = shown > 0; return; }
+  if (ds.sl) { const st = doc.steps[doc.cur]; const v = el.value.slice(0, ds.sl === 'note' ? 3000 : 100); if (v.trim()) st[ds.sl] = v; else delete st[ds.sl]; persist(); updateTop(); updateSteps(); return; }
   if (ds.meta) { doc.meta[ds.meta] = el.value; persist(); updateTop(); if (PJ && ds.meta === 'title') { clearTimeout(ledT); ledT = setTimeout(renderPitch, 250); } return; }
   if (ds.pe) { const it = getItem(sheetArg); if (!it) return; if (ds.pe === 'num') { const n = parseInt(el.value, 10); it.num = isFinite(n) ? n : null; } else it[ds.pe] = el.value; renderItemsNow(); return; }
   if (ds.te) { const it = sheetArg && sheetArg.id ? getItem(sheetArg.id) : null; if (it) { it.text = el.value; renderItemsNow(); } else if (textDraft) textDraft.text = el.value; return; }
@@ -2935,7 +3056,10 @@ $('#sheetBody').addEventListener('input', e => {
     applyFormation(formSide, false); persist(); renderItemsNow();
   }
 });
-$('#sheetBody').addEventListener('change', e => { if (e.target.dataset.fr) commit(); });
+$('#sheetBody').addEventListener('change', e => {
+  if (e.target.dataset.fr || e.target.dataset.sl) commit();
+  if (e.target.dataset.vr) { const v = +e.target.value; vid[e.target.dataset.vr] = v; if (vid.from > vid.to) { if (e.target.dataset.vr === 'from') vid.to = v; else vid.from = v; } renderSheet(); }
+});
 ['dragenter', 'dragover'].forEach(ev => $('#sheetBody').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('.dropzone'); if (z) z.classList.add('over'); }));
 ['dragleave', 'drop'].forEach(ev => $('#sheetBody').addEventListener(ev, e => { const z = e.target.closest && e.target.closest('.dropzone'); if (z) z.classList.remove('over'); }));
 let imgSide = 'a';
@@ -3148,7 +3272,7 @@ async function buildPNG(i, frame) {
   const logo = brand.stamp && brand.logo ? await loadImg(brand.logo).catch(() => null) : null;
   const tmp = document.createElement('canvas').getContext('2d');
   tmp.font = `400 ${nfs}px ${FONT}`;
-  const notes = doc.meta.notes.trim(), lines = notes ? wrapLines(tmp, notes, cw - pad * 2) : [];
+  const stp = doc.steps[i] || {}, notes = (stp.note || doc.meta.notes).trim(), lines = notes ? wrapLines(tmp, notes, cw - pad * 2) : [];
   const notesH = lines.length ? Math.round(nfs * 1.5 * lines.length + nfs * 3) : 0;
   const cv = document.createElement('canvas'); cv.width = cw; cv.height = pad + head + bh + notesH + pad;
   const ctx = cv.getContext('2d');
@@ -3156,10 +3280,10 @@ async function buildPNG(i, frame) {
   ctx.fillStyle = ink; ctx.textBaseline = 'alphabetic';
   ctx.font = `500 ${tfs}px ${DISPLAY_FONT}`;
   if ('letterSpacing' in ctx) ctx.letterSpacing = `${(tfs * -.03).toFixed(1)}px`;
-  ctx.fillText(doc.meta.title || 'Tactics board', pad, pad + tfs);
+  ctx.fillText(stp.title || doc.meta.title || 'Tactics board', pad, pad + tfs);
   if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   ctx.font = `400 ${Math.round(tfs * .5)}px ${FONT}`; ctx.fillStyle = mute;
-  const subTxt = [doc.meta.duration, n > 1 ? `Slide ${i + 1} of ${n}` : ''].filter(Boolean).join('   ');
+  const subTxt = [stp.title ? doc.meta.title : doc.meta.duration, n > 1 ? `Slide ${i + 1} of ${n}` : ''].filter(Boolean).join('   ');
   ctx.fillText(subTxt, pad, pad + tfs + Math.round(tfs * .75));
   drawBrand(ctx, cw - pad, pad + tfs * .62, Math.round(tfs * .52), logo);
   const r = Math.round(pad * .5), y0 = pad + head;
@@ -3248,22 +3372,26 @@ async function exportImages(share) {
 }
 
 /* ---------- video: the whole animation, camera moves included ---------- */
-function timeline() {
-  const n = doc.steps.length, spd = doc.speed, segs = [];
+function vidRange() {
+  const n = doc.steps.length, a = clamp(vid.from != null ? vid.from : 0, 0, n - 1), b = clamp(vid.to != null ? vid.to : n - 1, a, n - 1);
+  return [a, b];
+}
+function timeline(a = vidRange()[0], b = vidRange()[1]) {
+  const spd = doc.speed, segs = [];
   let t = 0;
-  const intro = introDur(0);
-  if (intro) { segs.push({ t0: 0, t1: intro, i: 0, move: false, intro: true }); t = intro; }
-  for (let i = 0; i < n; i++) {
-    const h = (i === 0 ? (intro ? 700 : 900) : i === n - 1 ? 1300 : 700) / spd;
+  const intro = introDur(a);
+  if (intro) { segs.push({ t0: 0, t1: intro, i: a, move: false, intro: true }); t = intro; }
+  for (let i = a; i <= b; i++) {
+    const h = (i === a ? (intro ? 700 : 900) : i === b ? 1300 : 700) / spd;
     segs.push({ t0: t, t1: t + h, i, move: false }); t += h;
-    if (i < n - 1) { const m = moveDur(i); segs.push({ t0: t, t1: t + m, i, move: true }); t += m; }
+    if (i < b) { const m = moveDur(i); segs.push({ t0: t, t1: t + m, i, move: true }); t += m; }
   }
   return { segs, total: t };
 }
 function frameAt(tl, t) {
   const s = tl.segs.find(q => t < q.t1) || tl.segs[tl.segs.length - 1];
   const r = clamp((t - s.t0) / (s.t1 - s.t0), 0, 1), k = ease(r);
-  if (s.intro) return { items: revealList(doc.steps[0].items, r), view: viewOf(0), cur: 0 };
+  if (s.intro) return { items: revealList(doc.steps[s.i].items, r), view: viewOf(s.i), cur: s.i };
   if (!s.move) return { items: doc.steps[s.i].items, view: viewOf(s.i), cur: s.i };
   return { items: interp(doc.steps[s.i].items, doc.steps[s.i + 1].items, r), view: lerpView(viewOf(s.i), viewOf(s.i + 1), k), cur: k < .5 ? s.i : s.i + 1 };
 }
@@ -3271,7 +3399,7 @@ function stampFrame(ctx, VW, VH, cur, logo) {
   const u = Math.min(VW, VH) / 720, pad = Math.round(22 * u), n = doc.steps.length, fs = Math.round(20 * u);
   const pill = (x, y, w, h) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, h / 2); else ctx.rect(x, y, w, h); ctx.fill(); };
   ctx.save(); ctx.textBaseline = 'middle';
-  const title = doc.meta.title || '', sub = n > 1 ? `Slide ${cur + 1} of ${n}` : '';
+  const title = (doc.steps[cur] && doc.steps[cur].title) || doc.meta.title || '', sub = n > 1 ? `Slide ${cur + 1} of ${n}` : '';
   ctx.font = `600 ${fs}px ${DISPLAY_FONT}`; const tw = title ? ctx.measureText(title).width : 0;
   ctx.font = `500 ${Math.round(fs * .8)}px ${FONT}`; const sw = sub ? ctx.measureText(sub).width : 0;
   if (title || sub) {
@@ -3358,14 +3486,14 @@ async function recordVideo(q, onProg, cancelled) {
 }
 async function startVideo() {
   vidCancel = false; if (vid.url) URL.revokeObjectURL(vid.url);
-  const q = vid.q; vid = { state: 'rec', q }; renderSheet();
+  const q = vid.q, [from, to] = vidRange(); vid = { state: 'rec', q, from, to }; renderSheet();
   try {
     const out = await recordVideo(q, (p, cur) => {
       const bar = $('#sheetBody .prog'); if (bar) { bar.firstChild.style.width = (p * 100).toFixed(1) + '%'; bar.setAttribute('aria-valuenow', Math.round(p * 100)); }
-      const tx = $('#vidtxt'); if (tx) tx.textContent = p < .65 ? `Rendering slide ${cur + 1} of ${doc.steps.length}` : `Encoding the video`;
+      const tx = $('#vidtxt'); if (tx) tx.textContent = p < .65 ? `Rendering slide ${cur + 1}` : `Encoding the video`;
     }, () => vidCancel || sheetKind !== 'export');
-    vid = out ? { state: 'done', q, ...out, url: URL.createObjectURL(out.blob) } : { state: 'idle', q };
-  } catch (e) { vid = { state: 'error', q, err: 'Recording stopped because this browser couldn’t encode the video. Try 720p, or another browser.' }; renderItemsNow(); }
+    vid = out ? { state: 'done', q, from, to, ...out, url: URL.createObjectURL(out.blob) } : { state: 'idle', q, from, to };
+  } catch (e) { vid = { state: 'error', q, from, to, err: 'Recording stopped because this browser couldn’t encode the video. Try 720p, or another browser.' }; renderItemsNow(); }
   if (sheetKind === 'export') renderSheet();
 }
 async function saveVideo(share) {
@@ -3379,13 +3507,16 @@ async function saveVideo(share) {
 function videoPane() {
   if (!canRecord()) return `<div class="empty"><p class="et">Video isn’t available in this browser</p><p class="ed">Recording needs a recent Chrome, Edge, Firefox or Safari. Image export still works.</p></div>`;
   const n = doc.steps.length, secs = Math.max(1, Math.round(timeline().total / 1000));
-  if (vid.state === 'rec') return `<p class="note" id="vidtxt" role="status">Rendering slide 1 of ${n}</p><div class="prog" role="progressbar" aria-label="Recording progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div><p class="note">Frames are drawn first, then encoded at a steady 30 per second, so camera moves stay smooth on any device. Keep this screen open until it finishes.</p><div class="btnrow"><button class="btn ghost" data-go="vidcancel">Stop recording</button></div>`;
+  if (vid.state === 'rec') return `<p class="note" id="vidtxt" role="status">Rendering slide ${vidRange()[0] + 1}</p><div class="prog" role="progressbar" aria-label="Recording progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div><p class="note">Frames are drawn first, then encoded at a steady 30 per second, so camera moves stay smooth on any device. Keep this screen open until it finishes.</p><div class="btnrow"><button class="btn ghost" data-go="vidcancel">Stop recording</button></div>`;
   if (vid.state === 'done') {
     const m = vid.msg ? `<p class="note ${vid.msg.ok ? 'okn' : 'badn'}" role="status">${esc(vid.msg.text)}</p>` : '';
     return `<video class="expimg" src="${vid.url}" controls playsinline muted></video><div class="btnrow"><button class="btn" data-go="vidsave">${icon('download')}<span>Save video</span></button>${navigator.share ? `<button class="btn ghost" data-go="vidshare">${icon('share')}<span>Share</span></button>` : ''}</div><p class="note">${vid.ext.toUpperCase()}, ${vid.w}×${vid.h}, ${(vid.blob.size / 1048576).toFixed(1)} MB.</p>${m}<div class="btnrow"><button class="btn ghost" data-go="vidagain">Record again</button></div>`;
   }
   const err = vid.state === 'error' ? `<p class="note badn" role="alert">${esc(vid.err)}</p>` : '';
-  return `<p class="note">Records all ${n} slide${n > 1 ? 's' : ''} with their moves and camera zooms at ${doc.speed}× speed, about ${secs} second${secs > 1 ? 's' : ''}.${brand.stamp ? ' Your branding sits in the corner.' : ''}</p>
+  const [ra, rb] = vidRange(), cnt = rb - ra + 1, mins = secs >= 90 ? `${Math.round(secs / 60)} minutes` : `${secs} second${secs > 1 ? 's' : ''}`;
+  const opt = sel => doc.steps.map((x, i) => `<option value="${i}"${i === sel ? ' selected' : ''}>${i + 1}${x.title ? ' · ' + esc(x.title.length > 44 ? x.title.slice(0, 43) + '…' : x.title) : ''}</option>`).join('');
+  const range = n > 1 ? `<div class="grid2"><label class="fld"><span>From slide</span><select data-vr="from">${opt(ra)}</select></label><label class="fld"><span>To slide</span><select data-vr="to">${opt(rb)}</select></label></div>` : '';
+  return `${range}<p class="note">Records ${cnt === n ? 'all ' : ''}${cnt} slide${cnt > 1 ? 's' : ''} with their moves and camera zooms at ${doc.speed}× speed, about ${mins}.${brand.stamp ? ' Your branding sits in the corner.' : ''}${secs > 240 ? ' Long videos need a lot of memory; record one exercise at a time on a phone.' : ''}</p>
     <h3>Quality</h3>${seg('vq', [['720', '720p'], ['1080', '1080p']], vid.q, 'data-vq', 'Video quality')}${err}
     <div class="btnrow"><button class="btn" data-go="vidrec">${icon('play')}<span>Record video</span></button></div>`;
 }
@@ -3427,6 +3558,7 @@ window.addEventListener('keydown', e => {
   if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { e.preventDefault(); removeRaw(sel); commit(); renderAll(); return; }
   if (e.key === ' ') { e.preventDefault(); playing ? stopPlay() : play(); return; }
   if ((e.key === 'f' || e.key === 'F') && !mod) { setFocus(!focusMode); return; }
+  if ((e.key === 'n' || e.key === 'N') && !mod) { openSheet('slide'); return; }
   if (!mod && (e.key === '+' || e.key === '=')) { zoomBy(1.25); return; }
   if (!mod && (e.key === '-' || e.key === '_')) { zoomBy(.8); return; }
   if (!mod && e.key === '0') { resetView(); return; }
@@ -3456,7 +3588,7 @@ itemSvg.addEventListener('wheel', e => {
 $('#sheetBody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.renin) { e.preventDefault(); const b = $('#sheetBody [data-rensave]'); if (b) b.click(); } });
 renderDock(); updateOpts(); applyView(); renderPitch(); renderAll();
 if ((items().length || doc.steps.length > 1) && !(store.get('hs.lib') || []).some(b => b.id === doc.id)) saveToLib(true);
-new ResizeObserver(() => { layoutOverlays(true); if (applyView()) renderPitch(); renderItemsNow(); }).observe(stage);
+new ResizeObserver(() => { notesEl.classList.toggle('on', notesWanted()); if (notesEl.classList.contains('on')) { notesKey = ''; renderNotes(); } layoutOverlays(true); if (applyView()) renderPitch(); renderItemsNow(); }).observe(stage);
 coarse.addEventListener && coarse.addEventListener('change', () => layoutOverlays());
 // Belt and braces for mobile browsers that still nudge the page while rotating.
 const pinPage = () => { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; };
