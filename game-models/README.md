@@ -40,7 +40,7 @@ The diagrams are teaching frames, not tracked match coordinates. Positions show 
 
 ## 2-3-2-3 In Possession · 20 rondos & exercises
 
-`2-3-2-3-in-possession-manual.json` is one board of 140 animated slides: a coach manual for a 2-3-2-3 in-possession programme in the De Zerbi style (bait the press, find the third man, isolate the winger, counter-press with the 2 + 3).
+`2-3-2-3-in-possession-manual.json` is one board of 145 animated slides: a coach manual for a 2-3-2-3 in-possession programme in the De Zerbi style (bait the press, find the third man, isolate the winger, counter-press with the 2 + 3).
 
 | Block | Exercises |
 | --- | --- |
@@ -51,6 +51,6 @@ The diagrams are teaching frames, not tracked match coordinates. Positions show 
 | D · Phases of play | 15 build-up v 4-4-2 press · 16 build-up v 4-3-3 press · 17 middle third v mid-block · 18 final third |
 | E · Games | 19 rest defence & counter-press · 20 11v11 2-3-2-3 game |
 
-Every exercise opens with a set-up slide, then each key action on its own animated slide, then coaching points and progressions. Every slide has its own title and notes (organisation, rules, scoring, coaching points, questions, progressions, dose). Tap the current slide number for the notes and the contents; on a large screen the notes sit beside the pitch. Exported images print each slide's notes, so an export is the printed manual.
+Every pattern follows one rule: a player with a man on his back never turns; he sets first time on an angle (a V or a zigzag) to a teammate facing forward, and only a free, side-on player plays on. Every exercise opens with a set-up slide, then each key action on its own animated slide, then coaching points and progressions. Every slide has its own title and notes (organisation, rules, scoring, coaching points, questions, progressions, dose). Tap the current slide number for the notes and the contents; on a large screen the notes sit beside the pitch. Exported images print each slide's notes, so an export is the printed manual.
 
 Import it with **Board menu → Import boards**. It opens in tap mode: each tap plays the next action.
