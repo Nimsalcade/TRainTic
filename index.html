@@ -64,6 +64,8 @@
   color-scheme:dark;
 }
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+/* Pinned to the window: nothing can scroll the page, so rotating never hides the top bar. */
+html,body{position:fixed;inset:0;width:100%;overflow:hidden}
 body{height:100%;margin:0;background:var(--background);color:var(--foreground);font:400 var(--text-sm)/var(--leading-body) var(--font-body);letter-spacing:var(--tracking-body);overflow:hidden;
   overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 input,textarea{-webkit-user-select:text;user-select:text}
@@ -73,7 +75,7 @@ button{font:inherit;letter-spacing:inherit;color:inherit;cursor:pointer;touch-ac
 .vh{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
 b,strong,h1,h2,h3{font-weight:500}
 
-#app{height:100%;display:flex;flex-direction:column;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
 
 /* top bar */
 .top{display:flex;align-items:center;gap:var(--space-1);height:60px;padding:0 var(--space-1) 0 var(--space-2);flex:none}
@@ -92,7 +94,9 @@ b,strong,h1,h2,h3{font-weight:500}
 
 /* stage */
 #stage{position:relative;flex:1;min-height:0;background:var(--surface-muted);overflow:hidden;transition:background-color var(--duration-standard) var(--ease-standard)}
-#stage>svg{position:absolute;inset:0;width:100%;height:100%;display:block;letter-spacing:0}
+#stage{--it:0px;--ir:0px;--ib:0px;--il:0px}
+/* The pitch fits inside the space the floating controls leave free; the stands still run to the edges. */
+#stage>svg{position:absolute;left:var(--il);top:var(--it);width:calc(100% - var(--il) - var(--ir));height:calc(100% - var(--it) - var(--ib));display:block;letter-spacing:0;overflow:visible}
 #pitchSvg{pointer-events:none;will-change:transform}
 #itemSvg{touch-action:none;-webkit-touch-callout:none}
 #stage.playing #itemSvg{cursor:pointer}
@@ -192,7 +196,7 @@ body.dropping::after{content:'Drop board files to import them';position:fixed;in
 .szchip input{width:120px;height:var(--control-height-md);margin:0;accent-color:var(--accent)}
 .szchip output{font-weight:500;font-variant-numeric:tabular-nums;min-width:40px;text-align:right}
 .sep{width:1px;height:24px;background:var(--border);flex:none;margin:0 var(--space-1)}
-.hint{color:var(--text-secondary);font-size:var(--text-sm);white-space:nowrap;padding:0 var(--space-2)}
+.hint{color:var(--text-secondary);font-size:var(--text-sm);line-height:1.3;padding:0 var(--space-2);flex:1 1 auto;min-width:140px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .sw{position:relative;width:var(--control-height-md);height:var(--control-height-md);border:0;padding:0;background:none;border-radius:50%;flex:none}
 .sw::before{content:"";position:absolute;inset:7px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1px var(--border-strong)}
 .sw[aria-checked="true"]::after{content:"";position:absolute;inset:2px;border-radius:50%;border:2px solid var(--accent)}
@@ -273,7 +277,15 @@ body.dropping::after{content:'Drop board files to import them';position:fixed;in
 #zoombar .ic{width:20px;height:20px}
 .zlab{min-width:56px;height:40px;padding:0 var(--space-1);border:0;background:none;border-radius:var(--radius-pill);font-weight:500;font-size:var(--text-sm);font-variant-numeric:tabular-nums;color:var(--foreground)}
 .zlab:active{background:var(--surface-muted)}
-#stage.playing #zoombar{display:none}
+#stage.playing #zoombar,#zoombar.off{display:none}
+#zoombar.vert{flex-direction:column-reverse}
+#zoombar.vert .zlab{min-width:40px;width:40px;height:30px;padding:0;font-size:11px}
+#fbar .zchip{height:var(--control-height-md);min-width:56px;padding:0 var(--space-2);border:0;border-radius:var(--radius-pill);background:var(--accent-subtle);color:var(--accent-strong);font-weight:500;font-size:var(--text-sm);font-variant-numeric:tabular-nums}
+#app.focus.rail #fbar{flex-direction:column;left:auto;right:var(--space-3);top:50%;bottom:auto;transform:translateY(-50%)}
+#app.focus.rail #fbar .cnt{min-width:0;padding:2px 0}
+#app.focus.rail #fbar .zchip{min-width:0;width:var(--control-height-md);padding:0;font-size:11px}
+.ib.pbk{position:relative}
+.ib.pbk.set::after{content:'';position:absolute;top:9px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--surface)}
 /* export */
 .exphead{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;margin-top:var(--space-4)}
 .exphead>span{flex:1;min-width:140px;color:var(--text-secondary);font-size:var(--text-sm)}
@@ -367,7 +379,7 @@ textarea.json{width:100%;height:160px;font:400 var(--text-xs)/1.45 ui-monospace,
 #fbar .cnt{font-weight:500;font-size:var(--text-sm);font-variant-numeric:tabular-nums;min-width:var(--control-height-md);text-align:center}
 #app.focus .top,#app.focus .bottom,#app.focus #dock{display:none}
 #app.focus #fbar{display:flex}
-#app.focus #selbar{bottom:80px}
+#app.focus:not(.rail) #selbar{bottom:80px}
 @media (orientation:landscape) and (max-height:560px){
   #app{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"dock top" "dock stage" "dock bottom"}
   .top{grid-area:top;height:52px}
@@ -542,6 +554,7 @@ const ICON = {
   hatch: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12 12 4M4 20 20 4M12 20l8-8"/>',
   chev: '<path d="m9 6 6 6-6 6"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  tune: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
   loop: '<path d="M17 3.5 20 6.5l-3 3"/><path d="M4 11.5v-1a4 4 0 0 1 4-4h12"/><path d="M7 20.5l-3-3 3-3"/><path d="M20 12.5v1a4 4 0 0 1-4 4H4"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
@@ -831,7 +844,7 @@ function projBounds(P, r) {
 }
 let viewKey = '';
 function applyView() {
-  const r = regionOf(doc.view), sw = stage.clientWidth || 360, sh = stage.clientHeight || 520, venue = !!doc.stadium;
+  const r = regionOf(doc.view), bx = itemSvg.getBoundingClientRect(), sw = bx.width || stage.clientWidth || 360, sh = bx.height || stage.clientHeight || 520, venue = !!doc.stadium;
   let p;
   if (doc.orient === 'h') p = false; else if (doc.orient === 'v') p = true;
   else if (venue) { const fit = q => { const b = projBounds(makeProj(q, doc.cam), r); return Math.min(sw / (b.w + 3), sh / (b.h + 6)); }; p = fit(true) > fit(false) * 1.04; }
@@ -956,12 +969,37 @@ function pinchMove() {
   storeView({ x: vx + w / 2, y: vy + h / 2 }, z); applyCam();
 }
 function endPinch() { pinch = null; commit(); }
+const coarse = matchMedia('(pointer:coarse)');
+let laying = false;
+// Decides where the floating controls sit and keeps the pitch out from under them.
+function layoutOverlays(skipFit) {
+  if (laying) return; laying = true;
+  try {
+    const zb = $('#zoombar'), fb = $('#fbar'), app = $('#app'), r = stage.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const wide = r.width > r.height * 1.05, z = baseVB ? (dispView || viewOf(doc.cur)).z : 1, zoomed = Math.abs(z - 1) > .005;
+    // Touch screens zoom with a pinch, so their zoom controls only appear once a slide is zoomed, over the play.
+    const fine = !coarse.matches, showZoom = !focusMode && (fine || zoomed);
+    zb.classList.toggle('off', !showZoom); zb.classList.toggle('vert', wide);
+    app.classList.toggle('rail', focusMode && wide);
+    let it = 0, ir = 0, ib = 0;
+    if (focusMode) { if (wide) ir = fb.offsetWidth + 24; else ib = fb.offsetHeight + 24; }
+    else if (showZoom && fine) { if (wide) ir = zb.offsetWidth + 24; else it = zb.offsetHeight + 24; }
+    const key = `${it}|${ir}|${ib}`;
+    if (key === stage.dataset.ins) return;
+    stage.dataset.ins = key;
+    stage.style.setProperty('--it', it + 'px'); stage.style.setProperty('--ir', ir + 'px'); stage.style.setProperty('--ib', ib + 'px');
+    if (!skipFit) { if (applyView()) renderPitch(); renderItemsNow(); }
+  } finally { laying = false; }
+}
 function updateZoomBar() {
   const zb = $('#zoombar'); if (!zb || !baseVB) return;
   const z = (dispView || viewOf(doc.cur)).z, pc = Math.round(z * 100), lab = zb.querySelector('[data-z="fit"]');
   if (lab) { lab.textContent = pc + '%'; lab.setAttribute('aria-label', `Slide zoom ${pc}%. Show the whole pitch`); }
   const zi = zb.querySelector('[data-z="in"]'), zo = zb.querySelector('[data-z="out"]');
   if (zi) zi.disabled = z >= ZMAX - .001; if (zo) zo.disabled = z <= ZMIN + .001;
+  if (focusMode && Math.round(z * 100) !== fbarZ) updateFbar();
+  layoutOverlays();
 }
 
 /* ---------- pitch ---------- */
@@ -1810,11 +1848,7 @@ function onDown(e) {
   if (ptrs.size === 2 && e.pointerType === 'touch' && !playing && baseVB) { startPinch(); return; }
   if (drag) return;
   if (e.button > 0) return;
-  if (playing) {
-    if (playing.tap) { const r = stage.getBoundingClientRect(); (e.clientX - r.left < r.width * .18 && doc.cur > 0) ? playBack() : playNext(); }
-    else stopPlay();
-    return;
-  }
+  if (playing) { stopPlay(); return; }
   const p = toPitch(e);
   const hEl = e.target.closest('[data-h]'), iEl = e.target.closest('#items [data-id]');
   const hit = iEl ? getItem(iEl.dataset.id) : null;
@@ -2112,16 +2146,7 @@ function play() {
 // Tap mode controls: next plays the move (or finishes one that's running); back returns to the previous slide.
 function playNext() { if (!playing) return; if (!playing.tap) { stopPlay(); return; } playing.next = true; playing.skip = true; }
 function playBack() { if (!playing || !playing.tap) return; playing.skip = true; playing.back = true; }
-const tapHint = document.createElement('div');
-tapHint.id = 'taphint'; tapHint.setAttribute('role', 'status'); tapHint.setAttribute('aria-live', 'polite');
-stage.appendChild(tapHint);
-function setTapHint(o) {
-  if (!o) { tapHint.className = ''; return; }
-  const last = o.i >= o.n - 1, touchy = matchMedia('(pointer:coarse)').matches;
-  const msg = o.busy ? 'Playing' : last ? (doc.loop ? `${touchy ? 'Tap' : 'Click'} to start again` : `${touchy ? 'Tap' : 'Click'} to finish`) : `${touchy ? 'Tap the board' : 'Click or press Space'} for slide ${o.i + 2}`;
-  tapHint.innerHTML = `<i aria-hidden="true"></i><span>${msg}</span><b>${o.i + 1} / ${o.n}</b>`;
-  tapHint.className = 'on' + (o.busy ? ' busy' : ' wait');
-}
+function setTapHint() {}
 function stopPlay() {
   if (!playing) return;
   setTapHint(null);
@@ -2130,8 +2155,7 @@ function stopPlay() {
 }
 function setPlayMode(m) {
   const was = !!playing; if (was) stopPlay();
-  doc.playMode = m === 'tap' ? 'tap' : 'auto'; persist(); updateSteps(); if (sheetKind === 'pitch') renderSheet();
-  toast(doc.playMode === 'tap' ? 'Tap mode: press play, then tap the board for each slide' : 'Auto mode: play runs every slide on its own');
+  doc.playMode = m === 'tap' ? 'tap' : 'auto'; persist(); updateSteps(); if (sheetKind) renderSheet();
 }
 function addStep() {
   stopPlay();
@@ -2139,7 +2163,7 @@ function addStep() {
   doc.steps.splice(doc.cur + 1, 0, v ? { items: clone(items()), view: { ...v } } : { items: clone(items()) });
   doc.cur++; sel = null; selMode = null; polyDraft = null; commit(); renderAll();
   toast(`Slide ${doc.cur + 1} added. Move players, then press play.`);
-  const c = document.querySelector('.stepw.on'); if (c) c.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  revealChip(document.querySelector('.stepw.on'));
 }
 function deleteStep(i) {
   if (doc.steps.length < 2) return;
@@ -2197,7 +2221,7 @@ function updateOpts() {
   switch (tool) {
     case 'move':
       if (lastBench.size) h = `<span class="hint">${lastBench.size} parked on the edge.</span>` + (doc.view !== 'full' ? `<button class="chip" data-squeeze="1">${icon('squeeze')}<span>Squeeze in</span></button>` : '') + `<button class="chip" data-view="full">${icon('pitch')}<span>Show full pitch</span></button>`;
-      else h = `<button class="chip" data-selall="1">${icon('select')}<span>Select all</span></button><span class="hint">Drag to move. Drag on empty grass or long-press to select several.</span>`;
+      else h = `<button class="chip" data-selall="1">${icon('select')}<span>Select all</span></button><span class="hint">Drag to move. Drag on empty grass to select several.</span>`;
       break;
     case 'player':
       h = set('Side', TEAMKEYS.map(([k, l]) => { const im = teamImgKey({ team: k }); return chip('player', k, l, null, im ? `<i class="dot img" style="--c:${teamColor(k)};background-image:url('${doc.teamImg[im].src}')"></i>` : `<i class="dot" style="--c:${teamColor(k)}"></i>`); }).join('')) + sep + `<button class="chip" data-open="formation">${icon('player')}<span>Set formation</span></button>` + sep + sizeSlider('szchip'); break;
@@ -2338,6 +2362,13 @@ $('#selbar').addEventListener('input', e => {
 });
 $('#selbar').addEventListener('change', e => { if ('alpha' in e.target.dataset) commit(); });
 ['pointerdown', 'touchstart'].forEach(ev => $('#selbar').addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+// Keeps a slide chip in view by scrolling the strip itself. scrollIntoView could scroll the whole page.
+function revealChip(el) {
+  if (!el) return;
+  const sc = [el.closest('.stepchips'), $('#steps')].find(x => x && x.scrollWidth > x.clientWidth + 1); if (!sc) return;
+  const a = el.getBoundingClientRect(), b = sc.getBoundingClientRect();
+  if (a.left < b.left + 4) sc.scrollLeft -= b.left + 4 - a.left; else if (a.right > b.right - 4) sc.scrollLeft += a.right - (b.right - 4);
+}
 function updateSteps() {
   const n = doc.steps.length;
   let h = `<button class="play" id="btnPlay" aria-label="${playing ? 'Stop animation' : 'Play animation'}">${icon(playing ? 'stop' : 'play')}</button><div class="stepchips" role="group" aria-label="Slides" data-roving="select">`;
@@ -2345,7 +2376,7 @@ function updateSteps() {
     const on = i === doc.cur;
     h += `<span class="stepw${on ? ' on' : ''}"><button class="step" data-step="${i}" data-rove tabindex="${on ? 0 : -1}"${on ? ' aria-current="step"' : ''} aria-label="Slide ${i + 1}" title="Slide ${i + 1}. Hold and drag to reorder">${i + 1}<i class="bar" aria-hidden="true"></i></button>${on && n > 1 && !playing ? `<button class="stepx" data-delstep="${i}" aria-label="Delete slide ${i + 1}">${icon('close')}</button>` : ''}</span>`;
   }
-  h += `</div><button class="ib" id="btnAddStep" aria-label="Add slide" title="Add slide">${icon('plus')}</button><button class="spd mode" id="btnMode" aria-pressed="${doc.playMode === 'tap'}" aria-label="Play mode: ${doc.playMode === 'tap' ? 'tap for each slide' : 'auto'}" title="${doc.playMode === 'tap' ? 'Tap: each slide waits for a tap on the board' : 'Auto: plays every slide on its own'}">${doc.playMode === 'tap' ? 'Tap' : 'Auto'}</button><button class="spd" id="btnSpeed" aria-label="Playback speed ${doc.speed}×">${doc.speed}×</button><button class="ib" id="btnLoop" aria-label="Loop playback" aria-pressed="${doc.loop}">${icon('loop')}</button><button class="ib" id="btnFocus" aria-label="Hide toolbars" title="Full-screen pitch (F)">${icon('expand')}</button>`;
+  h += `</div><button class="ib" id="btnAddStep" aria-label="Add slide" title="Add slide">${icon('plus')}</button><button class="ib pbk${doc.playMode === 'tap' || doc.loop || doc.speed !== 1 ? ' set' : ''}" id="btnPlayback" aria-label="Playback: ${doc.playMode === 'tap' ? 'tap for each slide' : 'auto'}, ${doc.speed}×${doc.loop ? ', loop' : ''}" title="Playback">${icon('tune')}</button><button class="ib" id="btnFocus" aria-label="Hide toolbars" title="Full-screen pitch (F)">${icon('expand')}</button>`;
   setHTML($('#steps'), h);
   updateFbar();
 }
@@ -2361,6 +2392,7 @@ $('#steps').addEventListener('click', e => {
   else if (b.id === 'btnLoop') { doc.loop = !doc.loop; persist(); updateSteps(); }
   else if (b.id === 'btnMode') { setPlayMode(doc.playMode === 'tap' ? 'auto' : 'tap'); const m = $('#btnMode'); if (m) m.focus({ preventScroll: true }); }
   else if (b.id === 'btnFocus') setFocus(true);
+  else if (b.id === 'btnPlayback') openSheet('playback');
 });
 
 /* ---------- slide order: hold a slide and drop it left or right ---------- */
@@ -2374,7 +2406,7 @@ function moveStep(from, to, keepFocus) {
   commit(); renderAll(); applyCam();
   toast(`Slide ${from + 1} moved to position ${to + 1}`, { label: 'Undo', fn: undo });
   if (keepFocus) { const c = $('#steps [aria-current="step"]'); if (c) c.focus({ preventScroll: true }); }
-  const c = document.querySelector('.stepw.on'); if (c) c.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  revealChip(document.querySelector('.stepw.on'));
 }
 function beginSlideDrag(st) {
   if (sdrag !== st || st.active || playing) return;
@@ -2457,6 +2489,14 @@ $('#steps').addEventListener('touchmove', e => {
 }, { passive: false });
 $('#steps').addEventListener('touchend', () => { if (sdrag && sdrag.active) endSlideDrag(null, true); });
 $('#steps').addEventListener('contextmenu', e => e.preventDefault());
+// While slides play, a tap on the board (or the space around it) drives them; the controls keep working.
+stage.addEventListener('pointerdown', e => {
+  if (!playing || e.button > 0 || (e.target.closest && e.target.closest('#fbar, #zoombar, #selbar'))) return;
+  e.preventDefault(); e.stopPropagation();
+  if (!playing.tap) { stopPlay(); return; }
+  const r = stage.getBoundingClientRect();
+  (e.clientX - r.left < r.width * .18 && doc.cur > 0) ? playBack() : playNext();
+}, true);
 // While a Tap-mode presentation runs, the keyboard and clickers drive it.
 window.addEventListener('keydown', e => {
   if (!playing || !playing.tap || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -2502,16 +2542,18 @@ function squeezeIntoView() {
   sel = null; commit(); renderAll();
   toast(`Every slide squeezed into the ${att ? 'attacking' : 'defending'} half`, { label: 'Undo', fn: undo });
 }
-let focusMode = false, focusHinted = false;
+let focusMode = false, focusHinted = false, fbarZ = 100;
 function setFocus(on) {
   focusMode = on; $('#app').classList.toggle('focus', on);
-  if (on) { selMode = null; if (!focusHinted) { focusHinted = true; setTimeout(() => toast('Toolbars hidden. Tap the corner button to bring them back.'), 150); } }
-  updateFbar();
+  if (on) selMode = null;
+  updateFbar(); layoutOverlays();
 }
 function updateFbar() {
-  const n = doc.steps.length;
+  const n = doc.steps.length, z = baseVB ? (dispView || viewOf(doc.cur)).z : 1, zoomed = Math.abs(z - 1) > .005;
+  fbarZ = Math.round(z * 100);
   setHTML($('#fbar'), `<button class="ib" data-f="undo" aria-label="Undo"${hist.length ? '' : ' disabled'}>${icon('undo')}</button>`
     + (n > 1 ? `<button class="ib" data-f="prev" aria-label="Previous slide"${doc.cur ? '' : ' disabled'}>${icon('prev')}</button><button class="play" data-f="play" aria-label="${playing ? 'Stop animation' : 'Play animation'}">${icon(playing ? 'stop' : 'play')}</button><span class="cnt"><span aria-hidden="true">${doc.cur + 1}/${n}</span><span class="vh">Slide ${doc.cur + 1} of ${n}</span></span><button class="ib" data-f="next" aria-label="Next slide"${doc.cur < n - 1 ? '' : ' disabled'}>${icon('next')}</button>` : '')
+    + (zoomed && !playing ? `<button class="zchip" data-f="fit" aria-label="Slide zoom ${fbarZ}%. Show the whole pitch">${fbarZ}%</button>` : '')
     + `<button class="ib" data-f="exit" aria-label="Show toolbars">${icon('collapse')}</button>`);
 }
 $('#fbar').addEventListener('click', e => {
@@ -2522,6 +2564,7 @@ $('#fbar').addEventListener('click', e => {
     case 'next': playing && playing.tap ? playNext() : gotoStep(doc.cur + 1); break;
     case 'play': playing ? stopPlay() : play(); break;
     case 'exit': setFocus(false); break;
+    case 'fit': resetView(); break;
   }
 });
 function renderAll() { renderItemsNow(); updateSelbar(); updateSteps(); updateTop(); }
@@ -2649,12 +2692,7 @@ const SHEETS = {
     <h3>Player labels</h3>${seg('labels', [['label', 'Position'], ['num', 'Number'], ['none', 'None']], doc.labels, 'data-set', 'Player labels')}
     <h3>Labels under tokens</h3>${seg('labelPos', [['under', 'On'], ['in', 'Off']], doc.labelPos, 'data-set', 'Labels under tokens')}
     <p class="note" style="margin-top:var(--space-2)">On moves every label to a tag under its token. Tokens with a crest or flag never show a label inside, so turn this on to keep their labels visible.</p>
-    <h3>Play mode</h3>${seg('playMode', [['auto', 'Auto'], ['tap', 'Tap for each slide']], doc.playMode, 'data-set', 'Play mode')}
-    <p class="note" style="margin-top:var(--space-2)">Auto plays every slide on its own. Tap shows each slide and waits: tap the board, click, or press Space or a presenter clicker to play the next move. Tap the left edge, or press the left arrow, to go back.</p>
-    <h3>Movement trails between slides</h3>${seg('onion', [[true, 'Show'], [false, 'Hide']], doc.onion, 'data-set', 'Movement trails between slides')}
-    <h3>Drawing animation</h3>${seg('drawAnim', [['draw', 'Draw on'], ['fade', 'Fade in']], doc.drawAnim, 'data-set', 'Drawing animation')}
-    <h3>When drawings appear</h3>${seg('drawTime', [['first', 'Draw, then move'], ['with', 'With the players']], doc.drawTime, 'data-set', 'When drawings appear')}
-    <p class="note" style="margin-top:var(--space-2)">New arrows, zones, shadows and text animate in when a slide plays, one after another in the order you drew them. Draw, then move finishes them before the players set off.</p>`],
+    <h3>Movement trails between slides</h3>${seg('onion', [[true, 'Show'], [false, 'Hide']], doc.onion, 'data-set', 'Movement trails between slides')}`],
   teams: () => ['Teams', TEAMKEYS.map(([k, l]) => {
     const sw = `<div class="sws" role="radiogroup" aria-label="${l} colour" data-roving="select"><button class="swauto" ${radio(!doc.teams[k])} data-team="${k}" data-c="">Style default</button>${TEAMPAL.map(c => `<button class="sw" ${radio(doc.teams[k] === c)} data-team="${k}" data-c="${c}" style="--c:${c}" aria-label="${cname(c)}"></button>`).join('')}</div>`;
     if (k !== 'a' && k !== 'b') return `<h3>${l} colour</h3>${sw}`;
@@ -2681,6 +2719,12 @@ const SHEETS = {
       ? `<div class="confirm" role="group" aria-label="Delete ${esc(b.name)}"><p><b>Delete “${esc(b.name)}”?</b></p><p class="ed">It’s removed from this device for good. The board you have open stays as it is.</p><div class="btnrow"><button class="btn ghost" data-canceldel="${esc(b.id)}">Keep board</button><button class="btn ghost danger" data-confirmdel="${esc(b.id)}">Delete board</button></div></div>`
       : `<div class="brow"><button class="row" data-openboard="${esc(b.id)}"><span><b>${esc(b.name)}</b><small>${new Date(b.updated).toLocaleDateString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}, ${b.doc.steps.length} slide${b.doc.steps.length > 1 ? 's' : ''}</small></span></button><button class="ib" data-delboard="${esc(b.id)}" aria-label="Delete ${esc(b.name)}">${icon('trash')}</button></div>`).join('')}</div>`];
   },
+  playback: () => ['Playback', `
+    <h3>Slides</h3>${seg('playMode', [['auto', 'Play through'], ['tap', 'Tap for each slide']], doc.playMode, 'data-set', 'Slides')}
+    <h3>Speed</h3>${seg('speed', [[.5, '0.5×'], [1, '1×'], [2, '2×']], doc.speed, 'data-set', 'Speed')}
+    <h3>Loop</h3>${seg('loop', [[false, 'Off'], [true, 'On']], doc.loop, 'data-set', 'Loop')}
+    <h3>Drawings</h3>${seg('drawAnim', [['draw', 'Draw on'], ['fade', 'Fade in']], doc.drawAnim, 'data-set', 'Drawings')}
+    <h3>Drawings appear</h3>${seg('drawTime', [['first', 'Before players move'], ['with', 'With the players']], doc.drawTime, 'data-set', 'Drawings appear')}`],
   import: () => ['Import boards', `
     <div class="dropzone" data-drop="1">${icon('upload')}<b>Board files from this device</b><small>A single board or a pack of several, saved from 3-2-5 (.json)</small><button class="btn" data-go="pickfiles" data-autofocus>${icon('upload')}<span>Choose files</span></button></div>
     ${importMsg ? `<ul class="imprep" role="status">${importMsg.lines.map(l => `<li class="note ${importMsg.ok ? 'okn' : 'badn'}">${esc(l)}</li>`).join('')}</ul>` : ''}
@@ -2692,7 +2736,8 @@ const SHEETS = {
   help: () => ['Gestures and shortcuts', `<dl class="help">
     <dt>Move</dt><dd>Drag any player, ball, arrow or zone. Tap to select, double-tap a player to rename it.</dd>
     <dt>Slides</dt><dd>Press + to copy the current slide, move players, then press play. Players glide between slides, new drawings animate in (arrows grow, zones are traced, text writes itself) and dotted trails show where each player came from. Choose how and when in Pitch and view. With reduced motion turned on, play cuts between slides and keeps the trails visible.</dd>
-    <dt>Play mode</dt><dd>The Auto / Tap button beside the speed switches how play runs. Auto plays every slide on its own. Tap waits on each slide: tap the board, click, or press Space, the right arrow or a presenter clicker for the next move; tap the left edge or press the left arrow to go back; Esc stops.</dd>
+    <dt>Playback</dt><dd>The playback button beside + sets how slides play (through, or one tap per slide), the speed, looping and how drawings appear. In tap mode, tap the board or press Space, the right arrow or a presenter clicker for the next move; tap the left edge or press the left arrow to go back.</dd>
+    <dt>Slide zoom</dt><dd>Pinch the board to zoom a slide, or use Ctrl or ⌘ with the scroll wheel. Tap the percentage to see the whole pitch again.</dd>
     <dt>Slide order</dt><dd>Hold a slide number, then drag it left or right and let go. With a mouse, just drag it. With the keyboard, focus a slide and press Alt with an arrow key.</dd>
     <dt>Import</dt><dd>Board menu, then Import boards: choose board files or a game-model pack from this device, paste board text, or drop files onto the board on a computer. Back up all in Sessions saves every session in one file.</dd>
     <dt>Slide view</dt><dd>Each slide keeps its own zoom. Pinch with two fingers, use the zoom buttons in the corner, or hold Ctrl or ⌘ and scroll. Once zoomed in, pinch or scroll to pan. The camera glides between slides when you play, change slide or export. Tap the percentage to see the whole pitch again.</dd>
@@ -2752,12 +2797,13 @@ function renderSheet() {
 }
 function setSetting(k, v) {
   if (k === 'size') v = parseFloat(v);
-  if (k === 'onion' || k === 'stadium') v = v === 'true';
+  if (k === 'onion' || k === 'stadium' || k === 'loop') v = v === 'true';
+  if (k === 'speed') v = [.5, 1, 2].includes(+v) ? +v : 1;
   const wasSt = !!doc.stadium;
   doc[k] = v; persist();
   if (['theme', 'view', 'orient', 'overlay', 'stadium'].includes(k)) { applyView(); renderPitch(); }
   if (k === 'stadium' && v && !wasSt) flyCamera();
-  if (k === 'playMode' && playing) stopPlay();
+  if ((k === 'playMode' || k === 'speed' || k === 'loop') && playing) stopPlay();
   // Preview the choice on the slide that's open.
   if (k === 'drawAnim' || k === 'drawTime') startReveal(new Set(items().filter(it => DRAWN[it.type]).map(i => i.id)));
   renderAll(); updateOpts();
@@ -3410,7 +3456,13 @@ itemSvg.addEventListener('wheel', e => {
 $('#sheetBody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.renin) { e.preventDefault(); const b = $('#sheetBody [data-rensave]'); if (b) b.click(); } });
 renderDock(); updateOpts(); applyView(); renderPitch(); renderAll();
 if ((items().length || doc.steps.length > 1) && !(store.get('hs.lib') || []).some(b => b.id === doc.id)) saveToLib(true);
-new ResizeObserver(() => { if (applyView()) renderPitch(); renderItemsNow(); }).observe(stage);
+new ResizeObserver(() => { layoutOverlays(true); if (applyView()) renderPitch(); renderItemsNow(); }).observe(stage);
+coarse.addEventListener && coarse.addEventListener('change', () => layoutOverlays());
+// Belt and braces for mobile browsers that still nudge the page while rotating.
+const pinPage = () => { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; };
+window.addEventListener('resize', pinPage); window.addEventListener('orientationchange', () => { pinPage(); setTimeout(() => { pinPage(); layoutOverlays(); }, 350); });
+if (window.visualViewport) window.visualViewport.addEventListener('resize', pinPage);
+layoutOverlays();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => renderItemsNow());
 if (firstRun) setTimeout(() => toast('Press play to watch the move, or drag any player.'), 700);
 try { if (window.claude && typeof window.claude.use === 'function') window.claude.use('downloads').then(d => { downloads = d; if (sheetKind === 'export') renderSheet(); }).catch(() => {}); } catch (e) {}
