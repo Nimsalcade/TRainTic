@@ -569,6 +569,8 @@ const ICON = {
   stop: '<rect x="7" y="7" width="10" height="10" rx="1.6" fill="currentColor" stroke="none"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   trash: '<path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/>',
+  together: '<path d="M5 4.5v15"/><path d="M5 8h12.5"/><path d="m14.5 5 3 3-3 3"/><path d="M5 16h12.5"/><path d="m14.5 13 3 3-3 3"/>',
+  apart: '<path d="M4 8h8.5"/><path d="m9.5 5 3 3-3 3"/><path d="M10 16h9.5"/><path d="m16.5 13 3 3-3 3"/>',
   copy: '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2"/><path d="M15.5 8.5V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v9.5a1 1 0 0 0 1 1h3.5"/>',
   edit: '<path d="M4 20h4.2L19 9.2 14.8 5 4 15.8z"/><path d="m12.5 7.3 4.2 4.2"/>',
   rotate: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4v5h-5"/>',
@@ -677,6 +679,7 @@ function sanitizeItem(i) {
   o.color = okColor(i.color);
   if (i.hl) o.hl = true;
   if (i.hatch) o.hatch = true;
+  if (typeof i.tg === 'string' && /^[\w-]{1,24}$/.test(i.tg) && ['arrow', 'rect', 'circle', 'poly', 'shadow', 'text'].includes(o.type)) o.tg = i.tg;
   if (Array.isArray(i.pts)) o.pts = i.pts.slice(0, 40).map(p => ({ x: +p.x || 0, y: +p.y || 0, ...(typeof p.ref === 'string' && /^[\w-]{1,24}$/.test(p.ref) ? { ref: p.ref } : {}) }));
   if (o.type === 'player' && !o.team) o.team = 'a';
   if (o.type === 'kit' && !o.kind) return null;
@@ -1626,6 +1629,9 @@ function drawUI(map) {
     return s;
   }
   const it = sel && map.get(sel); if (!it) return s;
+  if (it.tg && DRAWN[it.type]) for (const g of map.values()) if (g !== it && g.tg === it.tg) {
+    const b = itemBBox(g, map); s += box(b.x1 - .6, b.y1 - .6, b.x2 + .6, b.y2 + .6, '.6', `fill="none" stroke="${t.sel}" stroke-opacity=".6" stroke-width=".16" stroke-dasharray=".3 .45" pointer-events="none"`);
+  }
   switch (it.type) {
     case 'player': s += ring(it.x, it.y, tokenR() + .85); break;
     case 'ball': s += ring(it.x, it.y, ballR() + .7); break;
@@ -1802,6 +1808,7 @@ function duplicate(it) {
   else if (c.type === 'shadow') { const a = apexOf(it, map); c.from = null; c.x = a.x + 2.5; c.y = a.y + 2.5; }
   else { c.x += 2.5; c.y += 2.5; }
   if (c.type === 'player') { c.si = undefined; delete c.si; }
+  delete c.tg;
   items().push(c); sel = c.id; commit();
 }
 function applyFormation(side, doCommit = true) {
@@ -2075,17 +2082,27 @@ const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
 /* Drawings animate in rather than appearing: arrows grow from their start, zones are traced then filled,
    cover shadows sweep open and text writes itself in. Several drawings go one after another, in the order
-   they were drawn. "Draw, then move" finishes the drawings before the players set off. */
+   they were drawn, except drawings grouped to play together (same tg), which share one turn and start at
+   the same moment. "Draw, then move" finishes the drawings before the players set off. */
 const DRAWN = { arrow: 1, rect: 1, circle: 1, poly: 1, shadow: 1, text: 1 };
 const revealMs = n => Math.min(2200, 900 + 170 * Math.max(0, n - 1));
+// Turn order for the drawings being revealed: each ungrouped drawing takes a turn, each group takes one.
+function slotsOf(list, pick) {
+  const slot = new Map(), first = new Map(); let n = 0;
+  for (const it of list) if (pick(it)) {
+    if (it.tg && first.has(it.tg)) slot.set(it.id, first.get(it.tg));
+    else { if (it.tg) first.set(it.tg, n); slot.set(it.id, n++); }
+  }
+  return { slot, n };
+}
 function movePlan(A, B) {
-  const ma = new Set(A.map(i => i.id)), n = B.filter(b => DRAWN[b.type] && !ma.has(b.id)).length;
-  if (!n || doc.drawTime === 'with') return { ms: 1400, d1: .8, m0: 0, n };
+  const ma = new Set(A.map(i => i.id)), S = slotsOf(B, b => DRAWN[b.type] && !ma.has(b.id)), n = S.n;
+  if (!n || doc.drawTime === 'with') return { ms: 1400, d1: .8, m0: 0, n, S };
   const dr = revealMs(n), ms = dr * .9 + 1400;
-  return { ms, d1: dr / ms, m0: dr * .9 / ms, n };
+  return { ms, d1: dr / ms, m0: dr * .9 / ms, n, S };
 }
 const moveDur = i => movePlan(doc.steps[i].items, doc.steps[i + 1].items).ms / doc.speed;
-function introDur(i) { const n = doc.steps[i].items.filter(it => DRAWN[it.type]).length; return n ? revealMs(n) / doc.speed : 0; }
+function introDur(i) { const n = slotsOf(doc.steps[i].items, it => DRAWN[it.type]).n; return n ? revealMs(n) / doc.speed : 0; }
 function stagger(j, n, p) {
   if (n <= 1) return p;
   const w = Math.max(.34, 1 / (1 + (n - 1) * .45));
@@ -2094,8 +2111,8 @@ function stagger(j, n, p) {
 function revealItem(o, p) { if (doc.drawAnim === 'fade') o._op = ease(p); else o._prog = ease(p); return o; }
 function revealList(list, p, ids) {
   if (p >= 1) return list;
-  const pick = it => DRAWN[it.type] && (!ids || ids.has(it.id)), n = list.filter(pick).length; let j = 0;
-  return list.map(it => pick(it) ? revealItem({ ...it }, stagger(j++, n, p)) : it);
+  const pick = it => DRAWN[it.type] && (!ids || ids.has(it.id)), S = slotsOf(list, pick);
+  return list.map(it => pick(it) ? revealItem({ ...it }, stagger(S.slot.get(it.id), S.n, p)) : it);
 }
 // t is linear time through the transition, 0 to 1.
 function interp(A, B, t) {
@@ -2111,9 +2128,8 @@ function interp(A, B, t) {
       out.push(o);
     } else out.push({ ...a, _op: 1 - kf });
   }
-  let j = 0;
   for (const b of B) if (!ma.has(b.id)) {
-    if (DRAWN[b.type]) out.push(revealItem({ ...b }, stagger(j++, P.n, kd)));
+    if (DRAWN[b.type]) out.push(revealItem({ ...b }, stagger(P.S.slot.get(b.id), P.n, kd)));
     else out.push({ ...b, _op: P.m0 ? kd : Math.min(1, km * 1.8) });
   }
   return out;
@@ -2122,7 +2138,8 @@ function interp(A, B, t) {
 let reveal = null;
 function startReveal(ids) {
   if (reduceMotion() || !ids || !ids.size) { reveal = null; return; }
-  reveal = { ids, t0: performance.now(), ms: Math.min(1500, 650 + 130 * (ids.size - 1)) / doc.speed, step: doc.cur };
+  const n = slotsOf(items(), it => ids.has(it.id)).n || 1;
+  reveal = { ids, t0: performance.now(), ms: Math.min(1500, 650 + 130 * (n - 1)) / doc.speed, step: doc.cur };
   scheduleRender();
 }
 function newDrawings(fromI, toI) {
@@ -2301,7 +2318,9 @@ function groupBar(bar) {
   bar.classList.remove('pick');
   const players = list.filter(i => i.type === 'player'), colourable = list.some(i => i.type !== 'player' && i.type !== 'ball');
   const allHl = players.length && players.every(p => p.hl);
-  setHTML(bar, `<span class="gcount">${list.length} selected</span>` + (players.length ? btn('ghl', 'halo', allHl ? 'Unmark' : 'Mark') : '') + (colourable ? `<button data-act="color"><i class="dot" style="--c:${T().draw}"></i><span>Colour</span></button>` : '') + btn('gdup', 'copy', 'Copy') + btn('gdel', 'trash', 'Delete', 'danger') + btn('gclear', 'check', 'Done'));
+  const drawn = list.filter(isDrawn), oneGroup = drawn.length > 1 && drawn[0].tg && drawn.every(d => d.tg === drawn[0].tg);
+  const tog = drawn.length > 1 ? (oneGroup ? btn('gapart', 'apart', 'Apart') : btn('gtog', 'together', 'Together')) : '';
+  setHTML(bar, `<span class="gcount">${list.length} selected</span>` + tog + (players.length ? btn('ghl', 'halo', allHl ? 'Unmark' : 'Mark') : '') + (colourable ? `<button data-act="color"><i class="dot" style="--c:${T().draw}"></i><span>Colour</span></button>` : '') + btn('gdup', 'copy', 'Copy') + btn('gdel', 'trash', 'Delete', 'danger') + btn('gclear', 'check', 'Done'));
   bar.hidden = false;
 }
 function updateSelbar() {
@@ -2335,12 +2354,15 @@ function updateSelbar() {
     case 'ball': b = [btn('dup', 'copy', 'Copy'), btn('del', 'trash', 'Delete', 'danger')]; break;
     case 'text': b = [btn('edit', 'edit', 'Edit'), ...(it.rot ? [btn('level', 'level', 'Level')] : []), colorBtn(it.color || t.text), alphaBtn(), btn('dup', 'copy', 'Copy'), btn('del', 'trash', 'Delete', 'danger')]; break;
   }
+  const mates = it.tg && isDrawn(it) ? items().filter(i => i.tg === it.tg).length : 0;
+  if (mates > 1) { const k = b.findIndex(x => /data-act="(dup|del)"/.test(x)); b.splice(k, 0, btn('tgsel', 'together', `All ${mates}`), btn('apart1', 'apart', 'Apart')); }
   setHTML(bar, b.join('')); bar.hidden = false;
 }
 function duplicateGroup() {
-  const map = mapNow(), ids = [...group].filter(id => getItem(id)), idmap = new Map(ids.map(id => [id, uid()])), out = [], D = 2.5;
+  const map = mapNow(), ids = [...group].filter(id => getItem(id)), idmap = new Map(ids.map(id => [id, uid()])), out = [], D = 2.5, tgmap = new Map();
   for (const id of ids) {
     const it = getItem(id), c = clone(it); c.id = idmap.get(id); delete c.si;
+    if (c.tg) { if (!tgmap.has(c.tg)) tgmap.set(c.tg, 'g' + uid()); c.tg = tgmap.get(c.tg); }
     if (c.type === 'arrow') { const e2 = ends(it, map); Object.assign(c, { x1: e2.x1 + D, y1: e2.y1 + D, x2: e2.x2 + D, y2: e2.y2 + D, from: idmap.get(it.from) || null, to: idmap.get(it.to) || null }); }
     else if (c.type === 'poly') c.pts = it.pts.map(q => q.ref && idmap.has(q.ref) ? { ...resolvePt(q, map), ref: idmap.get(q.ref) } : (p => ({ x: p.x + D, y: p.y + D }))(resolvePt(q, map)));
     else if (c.type === 'shadow') { const a = apexOf(it, map); c.from = idmap.get(it.from) || null; c.x = a.x + D; c.y = a.y + D; }
@@ -2349,11 +2371,20 @@ function duplicateGroup() {
   }
   items().push(...out); setGroup(out.map(o => o.id)); commit();
 }
+function isDrawn(it) { return !!(it && DRAWN[it.type]); }
+function setTogether(ids, tg) {
+  const set = new Set(ids);
+  for (const st of doc.steps) for (const it of st.items) if (set.has(it.id)) { if (tg) it.tg = tg; else delete it.tg; }
+}
+// Show the timing at once: the chosen drawings draw in again on the current slide.
+function previewTogether(ids) { startReveal(new Set(ids.filter(id => isDrawn(getItem(id))))); }
 function groupAction(b) {
   const list = [...group].map(getItem).filter(Boolean);
   switch (b.dataset.act) {
     case 'ghl': { const pl = list.filter(i => i.type === 'player'), all = pl.every(p => p.hl); pl.forEach(p => { if (all) delete p.hl; else p.hl = true; }); commit(); break; }
     case 'gdup': duplicateGroup(); break;
+    case 'gtog': { const d = list.filter(isDrawn), ids = d.map(i => i.id); setTogether(ids, 'g' + uid()); commit(); previewTogether(ids); toast(`These ${d.length} drawings now play together`); break; }
+    case 'gapart': { const d = list.filter(isDrawn), ids = d.map(i => i.id); setTogether(ids, null); commit(); previewTogether(ids); toast('These drawings play one after another again'); break; }
     case 'gdel': { const n = list.length; list.forEach(i => removeRaw(i.id)); group.clear(); commit(); toast(`Deleted ${n} items`, { label: 'Undo', fn: undo }); break; }
     case 'gclear': group.clear(); selMode = null; break;
     case 'color': selMode = 'color'; break;
@@ -2380,6 +2411,8 @@ $('#selbar').addEventListener('click', e => {
     case 'auto': it.color = null; commit(); break;
     case 'alpha': selMode = 'alpha'; break;
     case 'level': it.rot = 0; commit(); break;
+    case 'tgsel': setGroup(items().filter(i => i.tg === it.tg).map(i => i.id)); break;
+    case 'apart1': setTogether([it.id], null); commit(); toast('This drawing takes its own turn again'); break;
     case 'back': selMode = null; break;
   }
   renderAll();
@@ -2863,6 +2896,7 @@ const SHEETS = {
     <dt>Pinned shapes</dt><dd>With Zones, then Shape, tap players as corners. The shape stretches with them, which is handy for rest defence or pressing traps.</dd>
     <dt>Half-pitch view</dt><dd>Anything outside the half you’re looking at is parked on the edge, with an arrow pointing to where it really is. Drag it in, or use Squeeze in to fit every slide into the half.</dd>
     <dt>Select several</dt><dd>With Move, drag across empty grass to box-select, long-press tokens to add or remove them, or use Select all. Drag any selected item to move them all; arrows and shapes pinned to players follow along.</dd>
+    <dt>Play drawings together</dt><dd>Drawings draw in one after another, in the order you drew them. To make some start at the same moment, select them and tap Together; the group takes one turn. Select one of them to see its partners outlined: All selects the whole group, Apart takes that drawing out.</dd>
     <dt>Rotate text</dt><dd>Select a label and drag the round handle above it. It snaps to 15° steps; Level resets it.</dd>
     <dt>Crests, flags and branding</dt><dd>Board menu, Teams: upload an image for each side and it fills every player token. Board menu, Branding: your board name and logo run round the stadium and sign every export.</dd>
     <dt>Sessions</dt><dd>Every session saves itself on this device as you work. Open Sessions from the top bar to start a new one, or reopen, rename, duplicate or delete a saved one.</dd>
