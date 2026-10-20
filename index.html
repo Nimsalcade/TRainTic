@@ -2111,6 +2111,7 @@ function stagger(j, n, p) {
   const w = Math.max(.34, 1 / (1 + (n - 1) * .45));
   return clamp01((p - j * (1 - w) / (n - 1)) / w);
 }
+const fadeList = (list, a) => list.map(it => ({ ...it, _op: (it._op == null ? 1 : it._op) * a }));
 function revealItem(o, p) { if (doc.drawAnim === 'fade') o._op = ease(p); else o._prog = ease(p); return o; }
 function revealList(list, p, ids) {
   if (p >= 1) return list;
@@ -2176,11 +2177,24 @@ function play() {
         playing.back = false;
         if (i > 0) { i--; doc.cur = i; t0 = now; phase = 'intro'; applyCam(); updateSteps(); updateTop(); if (!still && introDur(i)) renderItems(revealList(items(), 0), {}); else showStep(); hint(); }
       }
-      const go = playing.tap ? playing.next : el >= hold;
+      const atEnd = i >= doc.steps.length - 1;
+      const go = playing.tap ? playing.next : el >= (atEnd && doc.loop ? Math.max(hold, 1600 / spd) : hold);
       if (playing.tap) playing.next = false;
       if (go) {
-        if (i >= doc.steps.length - 1) { if (doc.loop) { i = 0; doc.cur = 0; t0 = now; phase = 'intro'; applyCam(); updateSteps(); if (!still && introDur(0)) renderItems(revealList(items(), 0), {}); else showStep(); hint(); } else { stopPlay(); return; } }
+        if (atEnd) { if (doc.loop) { phase = 'wrap'; t0 = now; hint(); } else { stopPlay(); return; } }
         else { phase = 'move'; t0 = now; hint(); }
+      }
+    } else if (phase === 'wrap') {
+      const last = doc.steps.length - 1, W = still ? 0 : 1400 / spd, t = W ? Math.min(1, el / W) : 1;
+      if (!still && t < 1) {
+        dispView = lerpView(viewOf(last), viewOf(0), ease(t)); applyCam();
+        if (t < .5) renderItems(fadeList(doc.steps[last].items, 1 - ease(t / .5)), {});
+        else renderItems(fadeList(introDur(0) ? revealList(doc.steps[0].items, 0) : doc.steps[0].items, ease((t - .5) / .5)), {});
+      }
+      if (t >= 1) {
+        i = 0; doc.cur = 0; dispView = null; applyCam(); t0 = now; updateSteps(); updateTop();
+        if (!still && introDur(0)) { phase = 'intro'; renderItems(revealList(items(), 0), {}); } else { phase = 'hold'; showStep(); }
+        hint();
       }
     } else {
       const t = still ? 1 : Math.min(1, el / (moveDur(i) || trans));
