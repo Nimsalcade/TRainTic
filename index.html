@@ -2111,6 +2111,59 @@ function stagger(j, n, p) {
   const w = Math.max(.34, 1 / (1 + (n - 1) * .45));
   return clamp01((p - j * (1 - w) / (n - 1)) / w);
 }
+
+/* ---------- ball sounds ----------
+   Every ball that travels between two slides makes a sound: a strike as it leaves the foot (harder for a long pass,
+   hardest for a shot), a softer touch as a pass arrives, and light touches while a player carries it. The sounds are
+   synthesised (a short pitched thump for the body of the ball, a burst of filtered noise for the contact), so there is
+   nothing to download. Sound is a setting of this device, in Playback. */
+const SFX = { on: store.get('hs.sound') !== false, ctx: null, noise: null };
+function sfxCtx() {
+  if (!SFX.on) return null;
+  if (!SFX.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; try { SFX.ctx = new AC(); } catch (e) { return null; } }
+  if (SFX.ctx.state === 'suspended') SFX.ctx.resume().catch(() => {});
+  return SFX.ctx;
+}
+function sfxNoise(ac) {
+  if (SFX.noise && SFX.noise.sampleRate === ac.sampleRate) return SFX.noise;
+  const b = ac.createBuffer(1, Math.round(ac.sampleRate * .25), ac.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return (SFX.noise = b);
+}
+// kind: 'shot' | 'pass' | 'touch' | 'carry'; power 0..1 (pass length). `when` is in the context's clock.
+function ballSound(ac, out, when, kind, power = .5) {
+  const P = { shot: [.78, 135, .2, .7, 2300], pass: [.5 + .35 * power, 125, .14, .5 + .3 * power, 1900], touch: [.32, 165, .09, .28, 1500], carry: [.2, 175, .07, .17, 1300] }[kind];
+  const [peak, f0, dur, slap, fc] = P;
+  const body = ac.createOscillator(), bg = ac.createGain();
+  body.type = 'sine';
+  body.frequency.setValueAtTime(f0, when); body.frequency.exponentialRampToValueAtTime(46, when + dur * .8);
+  bg.gain.setValueAtTime(.0001, when); bg.gain.exponentialRampToValueAtTime(peak, when + .005); bg.gain.exponentialRampToValueAtTime(.0001, when + dur);
+  body.connect(bg).connect(out); body.start(when); body.stop(when + dur + .02);
+  const n = ac.createBufferSource(), bp = ac.createBiquadFilter(), ng = ac.createGain();
+  n.buffer = sfxNoise(ac); bp.type = 'bandpass'; bp.frequency.value = fc; bp.Q.value = .8;
+  ng.gain.setValueAtTime(.0001, when); ng.gain.exponentialRampToValueAtTime(slap * .55, when + .002); ng.gain.exponentialRampToValueAtTime(.0001, when + (kind === 'shot' ? .09 : .045));
+  n.connect(bp).connect(ng).connect(out); n.start(when); n.stop(when + .12);
+}
+// The sounds of one move, as times through it (0..1, the same linear time interp() takes).
+// Players and balls travel on the move's ease from m0 to 1; the ball is struck just as it starts to roll.
+function ballEvents(A, B) {
+  const P = movePlan(A, B), mb = new Map(B.map(i => [i.id, i])), at = u => P.m0 + u * (1 - P.m0), ev = [];
+  const players = (L, id) => { const m = new Map(); for (const p of L) if (p.type === 'player') m.set(p.id, p); return m; };
+  const pa = players(A), pb = players(B);
+  for (const a of A) {
+    if (a.type !== 'ball') continue;
+    const b = mb.get(a.id); if (!b) continue;
+    const d = Math.hypot(b.x - a.x, b.y - a.y); if (d < 1.2) continue;
+    // A carry: the same player is at the ball before and after, and travels with it.
+    let carrier = null;
+    for (const [id, p] of pa) { const q = pb.get(id); if (q && Math.hypot(p.x - a.x, p.y - a.y) < 3.4 && Math.hypot(q.x - b.x, q.y - b.y) < 3.4) { carrier = id; break; } }
+    if (carrier) { const k = clamp(Math.round(d / 7), 2, 6); for (let j = 0; j < k; j++) ev.push({ t: at(.1 + .78 * j / (k - 1)), kind: 'carry' }); continue; }
+    const shot = (b.x > W - 2.2 || b.x < 2.2) && Math.abs(b.y - H / 2) < 6;
+    ev.push({ t: at(.1), kind: shot ? 'shot' : 'pass', power: clamp(d / 40, 0, 1) });
+    if (!shot && d > 5) ev.push({ t: at(.9), kind: 'touch' });
+  }
+  return ev.sort((x, y) => x.t - y.t);
+}
 const fadeList = (list, a) => list.map(it => ({ ...it, _op: (it._op == null ? 1 : it._op) * a }));
 function revealItem(o, p) { if (doc.drawAnim === 'fade') o._op = ease(p); else o._prog = ease(p); return o; }
 function revealList(list, p, ids) {
@@ -2156,7 +2209,8 @@ function play() {
   sel = null; group.clear(); selMode = null; polyDraft = null;
   let i = doc.cur >= n - 1 ? 0 : doc.cur, phase = 'intro', t0 = performance.now();
   doc.cur = i; cancelAnimationFrame(viewAnim); dispView = null; applyCam(); reveal = null;
-  playing = { raf: 0, tap: doc.playMode === 'tap', next: false, back: false, skip: false };
+  playing = { raf: 0, tap: doc.playMode === 'tap', next: false, back: false, skip: false, sfx: null };
+  if (SFX.on) sfxCtx();
   stage.classList.add('playing');
   renderAll();
   if (!reduceMotion() && introDur(i)) renderItems(revealList(items(), 0), {});
@@ -2182,7 +2236,7 @@ function play() {
       if (playing.tap) playing.next = false;
       if (go) {
         if (atEnd) { if (doc.loop) { phase = 'wrap'; t0 = now; hint(); } else { stopPlay(); return; } }
-        else { phase = 'move'; t0 = now; hint(); }
+        else { phase = 'move'; t0 = now; playing.sfx = null; hint(); }
       }
     } else if (phase === 'wrap') {
       const last = doc.steps.length - 1, W = still ? 0 : 1400 / spd, t = W ? Math.min(1, el / W) : 1;
@@ -2198,6 +2252,12 @@ function play() {
       }
     } else {
       const t = still ? 1 : Math.min(1, el / (moveDur(i) || trans));
+      if (!still && SFX.on) {
+        if (!playing.sfx || playing.sfx.i !== i) playing.sfx = { i, ev: ballEvents(doc.steps[i].items, doc.steps[i + 1].items), k: 0, lt: 0 };
+        const S = playing.sfx, ac = S.ev.length ? sfxCtx() : null, jump = t - S.lt > .5;
+        while (S.k < S.ev.length && S.ev[S.k].t <= t) { const e = S.ev[S.k++]; if (ac && !jump) ballSound(ac, ac.destination, ac.currentTime + .005, e.kind, e.power); }
+        S.lt = t;
+      }
       if (!still) { renderItems(interp(doc.steps[i].items, doc.steps[i + 1].items, t), {}); dispView = lerpView(viewOf(i), viewOf(i + 1), ease(t)); applyCam(); }
       const bar = document.querySelector(`.step[data-step="${i + 1}"] .bar`); if (bar) bar.style.transform = `scaleX(${t})`;
       if (t >= 1) { i++; doc.cur = i; dispView = null; applyCam(); phase = 'hold'; t0 = now; showStep(); updateSteps(); updateTop(); hint(); }
@@ -2903,6 +2963,7 @@ const SHEETS = {
     <h3>Slides</h3>${seg('playMode', [['auto', 'Play through'], ['tap', 'Tap for each slide']], doc.playMode, 'data-set', 'Slides')}
     <h3>Speed</h3>${seg('speed', [[.5, '0.5×'], [1, '1×'], [2, '2×']], doc.speed, 'data-set', 'Speed')}
     <h3>Loop</h3>${seg('loop', [[false, 'Off'], [true, 'On']], doc.loop, 'data-set', 'Loop')}
+    <h3>Ball sounds</h3>${seg('sound', [[true, 'On'], [false, 'Off']], SFX.on, 'data-set', 'Ball sounds')}
     <h3>Drawings</h3>${seg('drawAnim', [['draw', 'Draw on'], ['fade', 'Fade in']], doc.drawAnim, 'data-set', 'Drawings')}
     <h3>Drawings appear</h3>${seg('drawTime', [['first', 'Before players move'], ['with', 'With the players']], doc.drawTime, 'data-set', 'Drawings appear')}`],
   import: () => ['Import boards', `
@@ -2928,6 +2989,7 @@ const SHEETS = {
     <dt>Pinned shapes</dt><dd>With Zones, then Shape, tap players as corners. The shape stretches with them, which is handy for rest defence or pressing traps.</dd>
     <dt>Half-pitch view</dt><dd>Anything outside the half you’re looking at is parked on the edge, with an arrow pointing to where it really is. Drag it in, or use Squeeze in to fit every slide into the half.</dd>
     <dt>Select several</dt><dd>With Move, drag across empty grass to box-select, long-press tokens to add or remove them, or use Select all. Drag any selected item to move them all; arrows and shapes pinned to players follow along.</dd>
+    <dt>Ball sounds</dt><dd>When the ball moves between slides you hear it: a strike as a pass or shot is played, a touch as it arrives, light touches while a player carries it. Exported videos include the sounds. Turn them off in Playback; the choice is kept on this device.</dd>
     <dt>Play drawings together</dt><dd>Drawings draw in one after another, in the order you drew them. To make some start at the same moment, select them and tap Together; the group takes one turn. Select one of them to see its partners outlined: All selects the whole group, Apart takes that drawing out.</dd>
     <dt>Rotate text</dt><dd>Select a label and drag the round handle above it. It snaps to 15° steps; Level resets it.</dd>
     <dt>Crests, flags and branding</dt><dd>Board menu, Teams: upload an image for each side and it fills every player token. Board menu, Branding: your board name and logo run round the stadium and sign every export.</dd>
@@ -2979,6 +3041,11 @@ function renderSheet() {
   if (sheetKind === 'export') fillThumbs();
 }
 function setSetting(k, v) {
+  if (k === 'sound') {
+    SFX.on = v === 'true' || v === true; store.set('hs.sound', SFX.on);
+    const ac = sfxCtx(); if (ac) { ballSound(ac, ac.destination, ac.currentTime + .02, 'pass', .6); ballSound(ac, ac.destination, ac.currentTime + .42, 'touch'); }
+    if (sheetKind) renderSheet(); updateSteps(); return;
+  }
   if (k === 'size') v = parseFloat(v);
   if (k === 'onion' || k === 'stadium' || k === 'loop') v = v === 'true';
   if (k === 'speed') v = [.5, 1, 2].includes(+v) ? +v : 1;
@@ -3498,7 +3565,10 @@ async function recordVideo(q, onProg, cancelled) {
   const fill = PJ ? '#060708' : T().bg;
   const logo = brand.stamp && brand.logo ? await loadImg(brand.logo).catch(() => null) : null;
   try { if (document.fonts && document.fonts.load) await Promise.all([document.fonts.load('600 20px Geist'), document.fonts.load('800 20px Geist')]); } catch (e) {}
-  const mime = ['video/mp4;codecs=avc1.42E01F', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m));
+  const sevs = SFX.on ? tl.segs.filter(sg => sg.move).flatMap(sg => ballEvents(doc.steps[sg.i].items, doc.steps[sg.i + 1].items).map(e => ({ ...e, ms: sg.t0 + e.t * (sg.t1 - sg.t0) }))) : [];
+  const AV = ['video/mp4;codecs=avc1.42E01F,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus'];
+  const amime = sevs.length ? AV.find(m => MediaRecorder.isTypeSupported(m)) : null;
+  const mime = amime || ['video/mp4;codecs=avc1.42E01F', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m));
   if (!mime) throw new Error('no codec');
   const cv = document.createElement('canvas'); cv.width = VW; cv.height = VH;
   const ctx = cv.getContext('2d');
@@ -3528,15 +3598,25 @@ async function recordVideo(q, onProg, cancelled) {
   }
   renderItemsNow();
   // Pass 2: play the frames into the recorder at exactly 30 a second, decoding one frame ahead.
-  const stream = cv.captureStream(FPS), rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: q === '1080' ? 10e6 : 6e6 }), chunks = [];
+  const stream = cv.captureStream(FPS);
+  let actx = null, adest = null;
+  if (amime) {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext; actx = new AC(); await actx.resume();
+      adest = actx.createMediaStreamDestination(); stream.addTrack(adest.stream.getAudioTracks()[0]);
+    } catch (e) { actx = null; adest = null; }
+  }
+  const rec = new MediaRecorder(stream, { mimeType: actx ? mime : mime.replace(/,(mp4a\.40\.2|opus)$/, ''), videoBitsPerSecond: q === '1080' ? 10e6 : 6e6, ...(actx ? { audioBitsPerSecond: 128e3 } : {}) }), chunks = [];
   rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
   const stopped = new Promise(r => { rec.onstop = r; });
   const nextDistinct = fi => { for (let j = fi + 1; j < N; j++) if (frames[j] !== frames[fi]) return j; return -1; };
   let curBlob = null, curBmp = null, preBlob = null, pre = null;
   rec.start(500);
   const t0 = performance.now();
+  // Frame fi is shown at t0 + fi/FPS, so a sound at timeline time ms is due then; the audio clock is offset to match.
+  if (actx) { const a0 = actx.currentTime + .05 - (performance.now() - t0) / 1000; for (const e of sevs) ballSound(actx, adest, a0 + e.ms / 1000, e.kind, e.power); }
   for (let fi = 0; fi < N; fi++) {
-    if (cancelled()) { rec.stop(); await stopped; if (curBmp) curBmp.close(); return null; }
+    if (cancelled()) { rec.stop(); await stopped; if (curBmp) curBmp.close(); if (actx) actx.close().catch(() => {}); return null; }
     if (frames[fi] !== curBlob) {
       const bmp = preBlob === frames[fi] ? await pre : await createImageBitmap(frames[fi]);
       if (curBmp) curBmp.close(); curBmp = bmp; curBlob = frames[fi];
@@ -3549,7 +3629,7 @@ async function recordVideo(q, onProg, cancelled) {
   }
   const end = performance.now() + 200;
   while (performance.now() < end) { ctx.drawImage(curBmp, 0, 0, VW, VH); await new Promise(r => requestAnimationFrame(() => r())); }
-  rec.stop(); await stopped; if (curBmp) curBmp.close();
+  rec.stop(); await stopped; if (curBmp) curBmp.close(); if (actx) actx.close().catch(() => {});
   return { blob: new Blob(chunks, { type: mime.split(';')[0] }), ext: mime.startsWith('video/mp4') ? 'mp4' : 'webm', w: VW, h: VH };
 }
 async function startVideo() {
