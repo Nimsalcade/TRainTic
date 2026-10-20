@@ -194,6 +194,9 @@ body.dropping::after{content:'Drop board files to import them';position:fixed;in
 .tocrow.on .n{color:var(--accent-strong)}
 .stepx{display:grid;place-items:center;width:var(--control-height-md);padding:0;border:0;background:none;border-radius:0 var(--radius-control) var(--radius-control) 0;color:var(--accent-strong);box-shadow:inset 1px 0 0 var(--accent-divider)}
 .stepx .ic{width:16px;height:16px}
+.stepx.stepd:not(:last-child){border-radius:0}
+.slideacts{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-top:var(--space-3)}
+.slideacts .chip.danger{color:var(--danger)}
 .step .bar{position:absolute;left:var(--space-2);right:var(--space-2);bottom:5px;height:2px;border-radius:2px;background:var(--accent);transform-origin:left;transform:scaleX(0)}
 .spd.mode{min-width:auto;padding:0 var(--space-3)}
 .spd.mode[aria-pressed="true"]{border-color:var(--accent);color:var(--accent-strong);background:var(--accent-subtle)}
@@ -2214,6 +2217,17 @@ function addStep() {
   toast(`Slide ${doc.cur + 1} added. Move players, then press play.`);
   revealChip(document.querySelector('.stepw.on'));
 }
+function duplicateStep(i) {
+  if (i < 0 || i >= doc.steps.length) return;
+  if (doc.steps.length >= MAXSTEPS) { toast(`A board holds up to ${MAXSTEPS} slides. Start a new session for more.`); return; }
+  stopPlay(); flushViewCommit();
+  doc.steps.splice(i + 1, 0, clone(doc.steps[i]));
+  doc.cur = i + 1; sel = null; group.clear(); selMode = null; polyDraft = null; reveal = null;
+  commit(); renderAll(); applyCam();
+  toast(`Slide ${i + 1} duplicated as slide ${i + 2}`, { label: 'Undo', fn: undo });
+  revealChip(document.querySelector('.stepw.on'));
+  if (sheetKind === 'slide') renderSheet();
+}
 function deleteStep(i) {
   if (doc.steps.length < 2) return;
   stopPlay(); doc.steps.splice(i, 1);
@@ -2441,14 +2455,16 @@ function updateSteps() {
   for (let i = 0; i < n; i++) {
     const on = i === doc.cur;
     const tt = doc.steps[i].title || '', sc = secOf(tt), first = i > 0 && sc && sc !== secOf(doc.steps[i - 1].title);
-    h += `<span class="stepw${on ? ' on' : ''}${first ? ' sec' : ''}"><button class="step" data-step="${i}" data-rove tabindex="${on ? 0 : -1}"${on ? ' aria-current="step"' : ''} aria-label="Slide ${i + 1}${tt ? `: ${esc(tt)}` : ''}${on ? '. Open slide notes' : ''}" title="${tt ? esc(tt) + '. ' : ''}${on ? 'Tap for notes and contents' : `Slide ${i + 1}`}">${i + 1}<i class="bar" aria-hidden="true"></i></button>${on && n > 1 && !playing ? `<button class="stepx" data-delstep="${i}" aria-label="Delete slide ${i + 1}">${icon('close')}</button>` : ''}</span>`;
+    h += `<span class="stepw${on ? ' on' : ''}${first ? ' sec' : ''}"><button class="step" data-step="${i}" data-rove tabindex="${on ? 0 : -1}"${on ? ' aria-current="step"' : ''} aria-label="Slide ${i + 1}${tt ? `: ${esc(tt)}` : ''}${on ? '. Open slide notes' : ''}" title="${tt ? esc(tt) + '. ' : ''}${on ? 'Tap for notes and contents' : `Slide ${i + 1}`}">${i + 1}<i class="bar" aria-hidden="true"></i></button>${on && !playing ? `<button class="stepx stepd" data-dupstep="${i}" aria-label="Duplicate slide ${i + 1}" title="Duplicate slide ${i + 1}">${icon('copy')}</button>` : ''}${on && n > 1 && !playing ? `<button class="stepx" data-delstep="${i}" aria-label="Delete slide ${i + 1}" title="Delete slide ${i + 1}">${icon('close')}</button>` : ''}</span>`;
   }
-  h += `</div><button class="ib" id="btnAddStep" aria-label="Add slide" title="Add slide">${icon('plus')}</button><button class="ib pbk${doc.playMode === 'tap' || doc.loop || doc.speed !== 1 ? ' set' : ''}" id="btnPlayback" aria-label="Playback: ${doc.playMode === 'tap' ? 'tap for each slide' : 'auto'}, ${doc.speed}×${doc.loop ? ', loop' : ''}" title="Playback">${icon('tune')}</button><button class="ib" id="btnFocus" aria-label="Hide toolbars" title="Full-screen pitch (F)">${icon('expand')}</button>`;
+  h += `</div><button class="ib" id="btnAddStep" aria-label="Add the next slide after slide ${doc.cur + 1}" title="Next slide: continues from slide ${doc.cur + 1}">${icon('plus')}</button><button class="ib pbk${doc.playMode === 'tap' || doc.loop || doc.speed !== 1 ? ' set' : ''}" id="btnPlayback" aria-label="Playback: ${doc.playMode === 'tap' ? 'tap for each slide' : 'auto'}, ${doc.speed}×${doc.loop ? ', loop' : ''}" title="Playback">${icon('tune')}</button><button class="ib" id="btnFocus" aria-label="Hide toolbars" title="Full-screen pitch (F)">${icon('expand')}</button>`;
   setHTML($('#steps'), h);
   updateFbar();
 }
 $('#steps').addEventListener('click', e => {
   if (swallowClick) { swallowClick = false; e.preventDefault(); return; }
+  const dpl = e.target.closest('[data-dupstep]');
+  if (dpl) { const kb = dpl === document.activeElement; duplicateStep(+dpl.dataset.dupstep); if (kb) { const d = $('#steps [data-dupstep]'); if (d) d.focus({ preventScroll: true }); } return; }
   const x = e.target.closest('[data-delstep]');
   if (x) { const kb = x === document.activeElement; deleteStep(+x.dataset.delstep); if (kb) { const s = $('#steps [aria-current="step"]'); if (s) s.focus({ preventScroll: true }); } return; }
   const s = e.target.closest('[data-step]'); if (s) { if (+s.dataset.step === doc.cur && !playing) openSheet('slide'); else gotoStep(+s.dataset.step); return; }
@@ -2866,6 +2882,7 @@ const SHEETS = {
     <label class="fld"><span>Slide title</span><input data-sl="title" maxlength="100" value="${esc(st.title || '')}" placeholder="Rondo 4v1 — Set-up"></label>
     <label class="fld"><span>Slide notes</span><textarea class="notes" data-sl="note" maxlength="3000" placeholder="Organisation, rules, coaching points, progressions">${esc(st.note || '')}</textarea></label>
     <div class="seg"><button class="chip" aria-pressed="${doc.notesPanel !== false}" data-go="notespanel">Show notes beside the pitch on large screens</button></div>
+    <div class="slideacts"><button class="chip" data-go="dupslide">${icon('copy')}<span>Duplicate slide</span></button>${n > 1 ? `<button class="chip danger" data-go="delslide">${icon('trash')}<span>Delete slide</span></button>` : ''}</div>
     ${toc}`];
   },
   playback: () => ['Playback', `
@@ -2888,6 +2905,7 @@ const SHEETS = {
     <dt>Playback</dt><dd>The playback button beside + sets how slides play (through, or one tap per slide), the speed, looping and how drawings appear. In tap mode, tap the board or press Space, the right arrow or a presenter clicker for the next move; tap the left edge or press the left arrow to go back.</dd>
     <dt>Slide zoom</dt><dd>Pinch the board to zoom a slide, or use Ctrl or ⌘ with the scroll wheel. Tap the percentage to see the whole pitch again.</dd>
     <dt>Slide notes</dt><dd>Tap the current slide number to give the slide a title and notes, and to see every slide in order. Titles written as “Section — Slide” group slides into sections. On a large screen the notes sit beside the pitch; exported images include them.</dd>
+    <dt>Duplicate a slide</dt><dd>Open the slide, then tap the copy button beside its number (or press D, or use Duplicate slide in its notes). The copy has the same players, drawings, view, title and notes, and goes straight after the original; drag it anywhere in the strip. + is different: it adds the next slide, continuing from the one you are on.</dd>
     <dt>Slide order</dt><dd>Hold a slide number, then drag it left or right and let go. With a mouse, just drag it. With the keyboard, focus a slide and press Alt with an arrow key.</dd>
     <dt>Import</dt><dd>Board menu, then Import boards: choose board files or a game-model pack from this device, paste board text, or drop files onto the board on a computer. Back up all in Sessions saves every session in one file.</dd>
     <dt>Slide view</dt><dd>Each slide keeps its own zoom. Pinch with two fingers, use the zoom buttons in the corner, or hold Ctrl or ⌘ and scroll. Once zoomed in, pinch or scroll to pan. The camera glides between slides when you play, change slide or export. Tap the percentage to see the whole pitch again.</dd>
@@ -3066,6 +3084,8 @@ $('#sheetBody').addEventListener('click', e => {
     case 'importpaste': importPasted(); break;
     case 'notespanel': doc.notesPanel = doc.notesPanel === false; persist(); renderSheet(); renderNotes(); break;
     case 'slidenotes': openSheet('slide'); break;
+    case 'dupslide': duplicateStep(doc.cur); break;
+    case 'delslide': deleteStep(doc.cur); if (sheetKind === 'slide') renderSheet(); break;
     case 'backup': backupAll(); break;
     case 'copyjson': {
       const ta = $('#sheetBody textarea'); ta.select();
@@ -3593,6 +3613,7 @@ window.addEventListener('keydown', e => {
   if (e.key === ' ') { e.preventDefault(); playing ? stopPlay() : play(); return; }
   if ((e.key === 'f' || e.key === 'F') && !mod) { setFocus(!focusMode); return; }
   if ((e.key === 'n' || e.key === 'N') && !mod) { openSheet('slide'); return; }
+  if ((e.key === 'd' || e.key === 'D') && !mod && !sel && !group.size) { duplicateStep(doc.cur); return; }
   if (!mod && (e.key === '+' || e.key === '=')) { zoomBy(1.25); return; }
   if (!mod && (e.key === '-' || e.key === '_')) { zoomBy(.8); return; }
   if (!mod && e.key === '0') { resetView(); return; }
