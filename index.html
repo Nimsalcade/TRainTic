@@ -2113,8 +2113,8 @@ function stagger(j, n, p) {
 }
 
 /* ---------- ball sounds ----------
-   Every ball that travels between two slides makes a sound: a strike as it leaves the foot (harder for a long pass,
-   hardest for a shot), a softer touch as a pass arrives, and light touches while a player carries it. The sounds are
+   Every pass or shot between two slides makes one sound, a single kick as the ball leaves the foot (harder for a
+   long pass, hardest for a shot). A ball that a player carries with him makes none. The sounds are
    synthesised (a short pitched thump for the body of the ball, a burst of filtered noise for the contact), so there is
    nothing to download. Sound is a setting of this device, in Playback. */
 const SFX = { on: store.get('hs.sound') !== false, ctx: null, noise: null };
@@ -2130,9 +2130,9 @@ function sfxNoise(ac) {
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   return (SFX.noise = b);
 }
-// kind: 'shot' | 'pass' | 'touch' | 'carry'; power 0..1 (pass length). `when` is in the context's clock.
+// kind: 'shot' | 'pass'; power 0..1 (pass length). `when` is in the context's clock.
 function ballSound(ac, out, when, kind, power = .5) {
-  const P = { shot: [.78, 135, .2, .7, 2300], pass: [.5 + .35 * power, 125, .14, .5 + .3 * power, 1900], touch: [.32, 165, .09, .28, 1500], carry: [.2, 175, .07, .17, 1300] }[kind];
+  const P = { shot: [.78, 135, .2, .7, 2300], pass: [.5 + .35 * power, 125, .14, .5 + .3 * power, 1900] }[kind];
   const [peak, f0, dur, slap, fc] = P;
   const body = ac.createOscillator(), bg = ac.createGain();
   body.type = 'sine';
@@ -2154,13 +2154,12 @@ function ballEvents(A, B) {
     if (a.type !== 'ball') continue;
     const b = mb.get(a.id); if (!b) continue;
     const d = Math.hypot(b.x - a.x, b.y - a.y); if (d < 1.2) continue;
-    // A carry: the same player is at the ball before and after, and travels with it.
+    // A carry (the same player is at the ball before and after) is silent.
     let carrier = null;
     for (const [id, p] of pa) { const q = pb.get(id); if (q && Math.hypot(p.x - a.x, p.y - a.y) < 3.4 && Math.hypot(q.x - b.x, q.y - b.y) < 3.4) { carrier = id; break; } }
-    if (carrier) { const k = clamp(Math.round(d / 7), 2, 6); for (let j = 0; j < k; j++) ev.push({ t: at(.1 + .78 * j / (k - 1)), kind: 'carry' }); continue; }
+    if (carrier) continue;
     const shot = (b.x > W - 2.2 || b.x < 2.2) && Math.abs(b.y - H / 2) < 6;
     ev.push({ t: at(.1), kind: shot ? 'shot' : 'pass', power: clamp(d / 40, 0, 1) });
-    if (!shot && d > 5) ev.push({ t: at(.9), kind: 'touch' });
   }
   return ev.sort((x, y) => x.t - y.t);
 }
@@ -2989,7 +2988,7 @@ const SHEETS = {
     <dt>Pinned shapes</dt><dd>With Zones, then Shape, tap players as corners. The shape stretches with them, which is handy for rest defence or pressing traps.</dd>
     <dt>Half-pitch view</dt><dd>Anything outside the half you’re looking at is parked on the edge, with an arrow pointing to where it really is. Drag it in, or use Squeeze in to fit every slide into the half.</dd>
     <dt>Select several</dt><dd>With Move, drag across empty grass to box-select, long-press tokens to add or remove them, or use Select all. Drag any selected item to move them all; arrows and shapes pinned to players follow along.</dd>
-    <dt>Ball sounds</dt><dd>When the ball moves between slides you hear it: a strike as a pass or shot is played, a touch as it arrives, light touches while a player carries it. Exported videos include the sounds. Turn them off in Playback; the choice is kept on this device.</dd>
+    <dt>Ball sounds</dt><dd>Each pass or shot makes one kick sound as the ball is played. A ball a player carries is silent. Exported videos include the sounds. Turn them off in Playback; the choice is kept on this device.</dd>
     <dt>Play drawings together</dt><dd>Drawings draw in one after another, in the order you drew them. To make some start at the same moment, select them and tap Together; the group takes one turn. Select one of them to see its partners outlined: All selects the whole group, Apart takes that drawing out.</dd>
     <dt>Rotate text</dt><dd>Select a label and drag the round handle above it. It snaps to 15° steps; Level resets it.</dd>
     <dt>Crests, flags and branding</dt><dd>Board menu, Teams: upload an image for each side and it fills every player token. Board menu, Branding: your board name and logo run round the stadium and sign every export.</dd>
@@ -3043,7 +3042,7 @@ function renderSheet() {
 function setSetting(k, v) {
   if (k === 'sound') {
     SFX.on = v === 'true' || v === true; store.set('hs.sound', SFX.on);
-    const ac = sfxCtx(); if (ac) { ballSound(ac, ac.destination, ac.currentTime + .02, 'pass', .6); ballSound(ac, ac.destination, ac.currentTime + .42, 'touch'); }
+    const ac = sfxCtx(); if (ac) ballSound(ac, ac.destination, ac.currentTime + .02, 'pass', .6);
     if (sheetKind) renderSheet(); updateSteps(); return;
   }
   if (k === 'size') v = parseFloat(v);
