@@ -98,6 +98,42 @@ b,strong,h1,h2,h3{font-weight:500}
 /* The pitch fits inside the space the floating controls leave free; the stands still run to the edges. */
 #stage>svg{position:absolute;left:var(--il);top:var(--it);width:calc(100% - var(--il) - var(--ir));height:calc(100% - var(--it) - var(--ib));display:block;letter-spacing:0;overflow:visible}
 #pitchSvg{pointer-events:none;will-change:transform}
+/* media slides: a screenshot or a video frame sits where the pitch would be */
+#mediaLayer{position:absolute;left:0;top:0;width:10px;height:10px;transform-origin:0 0;pointer-events:none;display:none;background:#000;overflow:hidden}
+#stage.media #mediaLayer{display:block}
+#stage.media #pitchSvg{visibility:hidden}
+#mediaLayer video,#mediaLayer img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;display:none;-webkit-user-select:none;user-select:none}
+#mediaLayer.v video,#mediaLayer.i img{display:block}
+#fade{position:absolute;inset:0;background:#0B0D10;opacity:0;pointer-events:none;z-index:2}
+#mmsg{position:absolute;left:calc((100% + var(--il) - var(--ir))/2);top:50%;transform:translate(-50%,-50%);width:min(380px,calc(100% - var(--il) - var(--ir) - 48px));padding:var(--space-5);display:flex;flex-direction:column;align-items:center;gap:var(--space-3);text-align:center;
+  background:var(--surface-raised);border:1px solid var(--border-subtle);border-radius:var(--radius-panel);box-shadow:var(--shadow-floating);z-index:2}
+#mmsg[hidden]{display:none}
+#mmsg p{margin:0;overflow-wrap:anywhere}
+#mmsg .s{color:var(--text-secondary);font-size:var(--text-sm)}
+#vbar{position:absolute;left:calc((100% + var(--il) - var(--ir))/2);bottom:var(--space-3);transform:translateX(-50%);width:min(640px,calc(100% - var(--il) - var(--ir) - var(--space-6)));display:flex;flex-direction:column;
+  padding:var(--space-1);background:var(--surface-raised);border:1px solid var(--border-subtle);border-radius:var(--radius-panel);box-shadow:var(--shadow-floating);z-index:3}
+#vbar[hidden],#stage.playing #vbar{display:none}
+.vrow{display:flex;align-items:center;gap:2px;min-width:0}
+.vrow input[type=range]{flex:1;min-width:0;height:var(--control-height-md);margin:0 var(--space-1);accent-color:var(--accent);touch-action:none}
+.vrow output{font-variant-numeric:tabular-nums;font-size:var(--text-sm);color:var(--text-secondary);white-space:nowrap;padding:0 var(--space-2) 0 var(--space-1)}
+.vrow .vp{background:var(--accent);color:var(--accent-foreground)}
+.vrow.v2{justify-content:center;flex-wrap:wrap;gap:var(--space-2);padding:var(--space-1) var(--space-1) var(--space-2)}
+.vrow.v2[hidden]{display:none}
+.vrow.v2 .chip{min-height:40px;padding:0 var(--space-3)}
+.vrow.v2 .chip.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-foreground);font-weight:600}
+.vrow.v2.nudge{animation:vnudge .45s}
+.vrow i{font-style:normal}
+@keyframes vnudge{20%{transform:translateX(-6px)}50%{transform:translateX(6px)}80%{transform:translateX(-3px)}}
+#stage.hasv #selbar{bottom:calc(var(--vb,56px) + var(--space-5))}
+.stepw.med .step::before{content:'';position:absolute;right:5px;top:5px;width:6px;height:6px;border-radius:2px;background:currentColor;opacity:.55}
+@media (max-width:480px){.vrow output{font-size:var(--text-xs);padding:0 var(--space-1)}}
+/* a phone on its side has no height to spare: one row, shorter labels */
+@media (orientation:landscape) and (max-height:560px){
+  #vbar{flex-direction:row;align-items:center;width:calc(100% - var(--il) - var(--ir) - var(--space-6))}
+  #vbar .vrow{flex:1}
+  #vbar .vrow.v2{flex:none;flex-wrap:nowrap;padding:0 var(--space-1)}
+  #vbar .lg{display:none}
+}
 #itemSvg{touch-action:none;-webkit-touch-callout:none}
 #stage.playing #itemSvg{cursor:pointer}
 
@@ -167,7 +203,7 @@ b,strong,h1,h2,h3{font-weight:500}
 .imprep{margin:var(--space-3) 0 0;padding:0;list-style:none;display:grid;gap:4px;font-size:var(--text-sm,13px)}
 .imprep li{display:flex;gap:8px;align-items:center}
 .imprep .ic{width:16px;height:16px;flex:none}
-body.dropping::after{content:'Drop board files to import them';position:fixed;inset:12px;z-index:90;display:grid;place-items:center;border:2px dashed var(--accent);border-radius:18px;background:rgba(10,12,15,.55);color:#fff;font-weight:600;font-size:18px;pointer-events:none}
+body.dropping::after{content:'Drop board files, videos or images';position:fixed;inset:12px;z-index:90;display:grid;place-items:center;border:2px dashed var(--accent);border-radius:18px;background:rgba(10,12,15,.55);color:#fff;font-weight:600;font-size:18px;pointer-events:none}
 .stepw.sec{margin-left:9px}
 .stepw.sec::before{content:'';position:absolute;left:-7px;top:9px;bottom:9px;width:2px;border-radius:2px;background:var(--border-strong)}
 #notes{position:absolute;left:var(--space-3);top:var(--space-3);bottom:var(--space-3);width:var(--notes-w,340px);display:none;flex-direction:column;background:var(--surface-raised);border:1px solid var(--border-subtle);border-radius:var(--radius-panel);box-shadow:var(--shadow-floating);z-index:3;overflow:hidden}
@@ -449,6 +485,7 @@ textarea.json{width:100%;height:160px;font:400 var(--text-xs)/1.45 ui-monospace,
     <button class="ib" id="btnMenu" aria-label="Board menu"></button>
   </header>
   <main id="stage">
+    <div id="mediaLayer" aria-hidden="true"><video playsinline muted preload="auto"></video><img alt=""></div>
     <svg id="pitchSvg" aria-hidden="true" preserveAspectRatio="xMidYMid meet"><defs id="pdefs"></defs><g id="pworld"></g></svg>
     <svg id="itemSvg" role="application" aria-label="Tactics board" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -461,6 +498,9 @@ textarea.json{width:100%;height:160px;font:400 var(--text-xs)/1.45 ui-monospace,
       </defs>
       <g id="world"><g id="ghost" pointer-events="none"></g><g id="bench" pointer-events="none"></g><g id="items"></g><g id="ui"></g></g>
     </svg>
+    <div id="fade" aria-hidden="true"></div>
+    <div id="mmsg" role="status" hidden></div>
+    <div id="vbar" role="group" aria-label="Video" hidden></div>
     <div id="selbar" role="group" hidden></div>
     <div id="zoombar" role="group" aria-label="Slide view"><button class="ib" data-z="out" aria-label="Zoom out"></button><button class="zlab" data-z="fit">100%</button><button class="ib" data-z="in" aria-label="Zoom in"></button></div>
     <div id="fbar" role="group" aria-label="Playback"></div>
@@ -479,6 +519,7 @@ textarea.json{width:100%;height:160px;font:400 var(--text-xs)/1.45 ui-monospace,
 <div id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="fileIn" accept=".json,.325,.txt,application/json,text/plain" multiple hidden>
 <input type="file" id="imgIn" accept="image/*" hidden>
+<input type="file" id="mediaIn" accept="image/*,video/*" multiple hidden>
 <script>
 (() => {
 'use strict';
@@ -570,6 +611,11 @@ const ICON = {
   menu: '<circle cx="5.5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18.5" cy="12" r="1.4" fill="currentColor"/>',
   play: '<path d="M8.5 5.5v13l10-6.5z" fill="currentColor" stroke="none"/>',
   stop: '<rect x="7" y="7" width="10" height="10" rx="1.6" fill="currentColor" stroke="none"/>',
+  pause: '<path d="M8.5 6v12M15.5 6v12" stroke-width="2.6"/>',
+  fback: '<path d="m16.5 6.5-6 5.5 6 5.5"/><path d="M7 6.5v11"/>',
+  ffwd: '<path d="m7.5 6.5 6 5.5-6 5.5"/><path d="M17 6.5v11"/>',
+  media: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9 5 3-5 3z" fill="currentColor" stroke="none"/>',
+  spot: '<ellipse cx="12" cy="15" rx="8.5" ry="3.8"/><circle cx="12" cy="7" r="2.2"/><path d="M12 9.2v4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   trash: '<path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/>',
   together: '<path d="M5 4.5v15"/><path d="M5 8h12.5"/><path d="m14.5 5 3 3-3 3"/><path d="M5 16h12.5"/><path d="m14.5 13 3 3-3 3"/>',
@@ -665,7 +711,7 @@ const TEAMKEYS = [['a', 'Team A'], ['b', 'Team B'], ['gkA', 'Keeper A'], ['gkB',
 function blankDoc() {
   return { v: 1, id: uid(), meta: { title: '', duration: '', notes: '' }, theme: 'neon', view: 'full', overlay: 'none', orient: 'auto',
     size: 1, cam: 40, stadium: false, labels: 'label', labelPos: 'in', onion: true, notesPanel: true, speed: 1, loop: false, drawAnim: 'draw', drawTime: 'first', playMode: 'auto', teams: { a: null, b: null, gkA: null, gkB: null }, teamImg: { a: null, b: null },
-    form: { a: { key: '4-3-3', h: 0, w: 1 }, b: { key: '4-4-2', h: 0, w: 1 } }, steps: [{ items: [] }], cur: 0 };
+    form: { a: { key: '4-3-3', h: 0, w: 1 }, b: { key: '4-4-2', h: 0, w: 1 } }, media: {}, steps: [{ items: [] }], cur: 0 };
 }
 const LIBMAX = 150, MAXSTEPS = 250;
 const NUMK = ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'bend', 'w', 'h', 'r', 'ang', 'len', 'spread', 'rot', 'size', 'num', 'si', 'alpha'];
@@ -681,6 +727,7 @@ function sanitizeItem(i) {
   if (KITS.includes(i.kind)) o.kind = i.kind;
   o.color = okColor(i.color);
   if (i.hl) o.hl = true;
+  if (i.spot && o.type === 'player') o.spot = true;
   if (i.hatch) o.hatch = true;
   if (typeof i.tg === 'string' && /^[\w-]{1,24}$/.test(i.tg) && ['arrow', 'rect', 'circle', 'poly', 'shadow', 'text'].includes(o.type)) o.tg = i.tg;
   if (Array.isArray(i.pts)) o.pts = i.pts.slice(0, 40).map(p => ({ x: +p.x || 0, y: +p.y || 0, ...(typeof p.ref === 'string' && /^[\w-]{1,24}$/.test(p.ref) ? { ref: p.ref } : {}) }));
@@ -719,8 +766,21 @@ function normalizeDoc(o) {
   d.drawAnim = d.drawAnim === 'fade' ? 'fade' : 'draw';
   d.drawTime = d.drawTime === 'with' ? 'with' : 'first';
   d.playMode = d.playMode === 'tap' ? 'tap' : 'auto';
+  // Media a slide can sit on: only its description lives in the board; the picture or clip itself stays in this device's media store.
+  const md = {};
+  if (d.media && typeof d.media === 'object') for (const [id, m] of Object.entries(d.media).slice(0, 400)) {
+    if (!/^[\w-]{1,24}$/.test(id) || !m || (m.kind !== 'image' && m.kind !== 'video')) continue;
+    const mw = +m.w, mh = +m.h; if (!(mw >= 8 && mh >= 8 && mw <= 20000 && mh <= 20000)) continue;
+    const e = { kind: m.kind, name: String(m.name || '').slice(0, 120), w: Math.round(mw), h: Math.round(mh) };
+    if (m.kind === 'video') e.dur = clamp(+m.dur || 0, 0, 86400);
+    if (m.kind === 'image' && typeof m.data === 'string' && m.data.length < 6e6 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(m.data)) e.data = m.data;
+    md[id] = e;
+  }
+  d.media = md;
+  const mref = s => { const r = s && s.media, m = r && typeof r.id === 'string' ? md[r.id] : null; return !m ? null : m.kind === 'video' ? { id: r.id, t: Math.round(clamp(+r.t || 0, 0, m.dur || 86400) * 1000) / 1000 } : { id: r.id }; };
   if (!Array.isArray(d.steps) || !d.steps.length) d.steps = [{ items: [] }];
-  d.steps = d.steps.slice(0, MAXSTEPS).map(s => { const o = { items: (s && Array.isArray(s.items) ? s.items : []).map(sanitizeItem).filter(Boolean) }, v = sanitizeView(s && s.view); if (v) o.view = v; if (s && typeof s.title === 'string' && s.title.trim()) o.title = s.title.slice(0, 100); if (s && typeof s.note === 'string' && s.note.trim()) o.note = s.note.slice(0, 3000); return o; });
+  d.steps = d.steps.slice(0, MAXSTEPS).map(s => { const o = { items: (s && Array.isArray(s.items) ? s.items : []).map(sanitizeItem).filter(Boolean) }, v = sanitizeView(s && s.view), mr = mref(s); if (v) o.view = v; if (mr) o.media = mr; if (s && typeof s.title === 'string' && s.title.trim()) o.title = s.title.slice(0, 100); if (s && typeof s.note === 'string' && s.note.trim()) o.note = s.note.slice(0, 3000); return o; });
+  { const used = new Set(d.steps.map(s => s.media && s.media.id)); for (const id of Object.keys(d.media)) if (!used.has(id)) delete d.media[id]; }
   d.notesPanel = d.notesPanel !== false;
   d.cur = clamp(d.cur | 0, 0, d.steps.length - 1);
   if (typeof d.id !== 'string' || !/^[\w-]{1,24}$/.test(d.id)) d.id = uid();
@@ -783,6 +843,15 @@ function kickoffDoc() {
 let firstRun = false;
 let doc = (() => { const s = store.get('hs.doc'); if (s) return normalizeDoc(s); firstRun = true; return demoDoc(); })();
 let portrait = false;
+// Media slides. MED holds what is loaded on this visit: id -> { state: 'loading' | 'ok' | 'missing' | 'bad', blob, url }.
+// stageI lets exports render a slide other than the one on screen; stageKey is what the stage shows now ('p' pitch, 'm:<id>' media).
+const MED = new Map(), medP = new Map();
+let stageI = null, stageKey = 'p', shownId = null, relinkId = null, storeWarn = false;
+// vctl: the video transport while editing. scrub is where the picture is when it has left the slide's own moment;
+// mode is 'play' (transport playing) or 'present' (the slideshow is playing the clip on to the next pause point).
+const vctl = { scrub: null, mode: null, key: '', raf: 0, dirty: false, want: 0, nudged: 0 };
+// Colours for drawing on footage: white lines, a blue and a red team, yellow labels.
+const MTHEME = { name: 'Footage', dark: true, line: '#FFFFFF', lw: .3, tokens: 'flat', a: '#2456F5', b: '#E5383B', gkA: '#F5C518', gkB: '#2FBF71', draw: '#FFFFFF', runc: '#FFD23F', text: '#FFD23F', sel: '#FFD23F', bg: '#0B0D10' };
 let PJ = null, camOverride = null; // PJ: the stadium camera projection, null for flat styles
 let tool = 'move';
 const sub = { player: 'a', arrow: 'pass', shape: 'zone', kit: 'ball', text: 'box' };
@@ -793,7 +862,9 @@ let hist = [], fut = [], lastSnap = null;
 let downloads = null;
 let formSide = 'a';
 
-const T = () => THEMES[doc.theme] || THEMES.neon;
+const stageIdx = () => stageI != null ? stageI : doc.cur;
+const stageIsMedia = () => { const s = doc.steps[stageIdx()]; return !!(s && s.media && doc.media && doc.media[s.media.id]); };
+const T = () => stageIsMedia() ? MTHEME : THEMES[doc.theme] || THEMES.neon;
 const items = () => doc.steps[doc.cur].items;
 const getItem = id => items().find(i => i.id === id);
 const mapNow = () => new Map(items().map(i => [i.id, i]));
@@ -801,7 +872,7 @@ const tokenR = () => 1.7 * doc.size * (PJ ? 1.12 : 1);
 const ballR = () => .62 + .28 * doc.size;
 const teamColor = k => doc.teams[k] || T()[k];
 const crot = () => portrait && !PJ ? 90 : 0;
-const radiusOf = it => it.type === 'player' ? tokenR() : it.type === 'ball' ? ballR() : 1;
+const radiusOf = it => it.type === 'player' ? (it.spot ? .2 : tokenR()) : it.type === 'ball' ? ballR() : 1;
 function labelFor(it) {
   if (doc.labels === 'none') return '';
   if (doc.labels === 'num') return it.num != null ? String(it.num) : '';
@@ -875,6 +946,16 @@ function projBounds(P, r) {
 }
 let viewKey = '';
 function applyView() {
+  const md = stageMedia();
+  if (md) {
+    // A media slide is framed on its picture, upright, whatever the pitch is set to.
+    const mr = mediaRect(md);
+    portrait = false; PJ = null;
+    world.setAttribute('transform', ''); pworld.setAttribute('transform', '');
+    baseVB = [mr.x, mr.y, mr.w, mr.h]; applyCam();
+    const key = `m|${f(mr.w)}|${f(mr.h)}`, changed = key !== viewKey; viewKey = key;
+    return changed;
+  }
   const r = regionOf(doc.view), bx = itemSvg.getBoundingClientRect(), sw = bx.width || stage.clientWidth || 360, sh = bx.height || stage.clientHeight || 520, venue = !!doc.stadium;
   let p;
   if (doc.orient === 'h') p = false; else if (doc.orient === 'v') p = true;
@@ -929,8 +1010,8 @@ function vbForView(v, base = baseVB) {
   c = { x: clamp(c.x, bx, bx + bw), y: clamp(c.y, by, by + bh) };
   return [c.x - w / 2, c.y - h / 2, w, h];
 }
-function setVB(vb) { const s = vb.map(f).join(' '); pitchSvg.setAttribute('viewBox', s); itemSvg.setAttribute('viewBox', s); }
-function applyCam() { if (!baseVB) return; setVB(vbForView(dispView || viewOf(doc.cur))); updateZoomBar(); }
+function setVB(vb) { const s = vb.map(f).join(' '); pitchSvg.setAttribute('viewBox', s); itemSvg.setAttribute('viewBox', s); placeMedia(); }
+function applyCam() { if (!baseVB) return; syncStage(); setVB(vbForView(dispView || viewOf(stageIdx()))); updateZoomBar(); }
 // Zoom interpolates in log space so a 1× to 4× move feels even all the way.
 const lerpView = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: Math.exp(Math.log(a.z) + (Math.log(b.z) - Math.log(a.z)) * t) });
 const camEase = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -1019,6 +1100,7 @@ function layoutOverlays(skipFit) {
     if (notesEl.classList.contains('on')) il = nw + 24;
     if (focusMode) { if (wide) ir = fb.offsetWidth + 24; else ib = fb.offsetHeight + 24; }
     else if (showZoom && fine) { if (wide) ir = zb.offsetWidth + 24; else it = zb.offsetHeight + 24; }
+    const vbEl = $('#vbar'); if (vbEl && !vbEl.hidden) ib += vbEl.offsetHeight + 20;
     const key = `${it}|${ir}|${ib}|${il}`;
     if (key === stage.dataset.ins) return;
     stage.dataset.ins = key;
@@ -1066,6 +1148,7 @@ function overlayMarkup(L, lw) {
   return `<path d="${d}" stroke="${L}" stroke-width="${f(lw * .75)}" stroke-dasharray=".9 .9" opacity=".55" fill="none"/>${extra}`;
 }
 function renderPitch() {
+  if (stageIsMedia()) { pdefs.innerHTML = ''; pworld.innerHTML = ''; stage.style.backgroundColor = MTHEME.bg; return; }
   if (PJ) { renderStadium(); return; }
   const t = T(), k = doc.theme, L = t.line;
   let defs = `<pattern id="pNet" width=".45" height=".45" patternUnits="userSpaceOnUse"><path d="M0 0H.45M0 0V.45" stroke="${L}" stroke-width=".06" opacity=".75"/></pattern>`;
@@ -1382,7 +1465,18 @@ function drawJersey(it) {
   }
   return `<g data-id="${it.id}" transform="${atT(it.x, it.y)}"${op(it)}>${g}</g>`;
 }
+// A marker for footage: a disc on the ground under a player, so the player himself stays visible.
+function drawSpot(it) {
+  const r = tokenR() * 1.55, ry = r * .44, c = it.color || teamColor(it.team);
+  let g = `<ellipse rx="${f(r * 1.2)}" ry="${f(Math.max(ry * 1.7, 1.5))}" fill="transparent"/>`;
+  if (it.hl) g += `<ellipse rx="${f(r * 1.75)}" ry="${f(ry * 1.75)}" fill="#FFE14D" opacity=".24"/><ellipse rx="${f(r * 1.75)}" ry="${f(ry * 1.75)}" fill="none" stroke="#FFE14D" stroke-width=".16" opacity=".9"/>`;
+  g += `<ellipse rx="${f(r)}" ry="${f(ry)}" fill="${c}" fill-opacity=".82"/><ellipse rx="${f(r)}" ry="${f(ry)}" fill="none" stroke="${lighten(c, .55)}" stroke-width=".17" stroke-dasharray="${f(r * 1.25)} ${f(r * .42)}" stroke-linecap="round" opacity=".95"/>`;
+  const lab = doc.labels === 'none' ? '' : (it.name || it.label || '');
+  if (lab) { const fs = tokenR() * .62, w = measure(lab, fs) + fs * .9, h = fs * 1.4, y = ry + .5; g += `<rect x="${f(-w / 2)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" rx=".22" fill="rgba(0,0,0,.66)"/><text y="${f(y + h * .74)}" font-size="${f(fs)}" fill="#FFFFFF" ${TXT}>${esc(lab)}</text>`; }
+  return `<g data-id="${it.id}" transform="${atT(it.x, it.y)}"${op(it)}>${g}</g>`;
+}
 function drawPlayer(it, defs) {
+  if (it.spot) return drawSpot(it);
   const ts = tokStyle();
   if (ts === 'jersey') return drawJersey(it);
   const t = T(), r = tokenR(), c = it.color || teamColor(it.team), style = ts;
@@ -1572,7 +1666,7 @@ function drawItem(it, map, defs) {
   }
 }
 function drawGhost() {
-  if (doc.cur === 0 || !doc.onion) return '';
+  if (doc.cur === 0 || !doc.onion || doc.steps[doc.cur].media || doc.steps[doc.cur - 1].media) return '';
   const prev = new Map(doc.steps[doc.cur - 1].items.map(i => [i.id, i])); let s = '';
   for (const it of items()) {
     if (it.type !== 'player' && it.type !== 'ball') continue;
@@ -1722,6 +1816,7 @@ function drawBench(bench) {
   return s;
 }
 function renderItems(list, o = {}) {
+  syncStage();
   renderTeamDefs();
   if (o.bench !== false) {
     computeVis();
@@ -1742,17 +1837,377 @@ function renderItems(list, o = {}) {
 }
 let lastBenchCount = 0;
 function renderItemsNow() {
-  let list = items();
+  syncStage();
+  // While the video is off the slide's own moment, its drawings would not match the picture, so they wait.
+  const off = offTime();
+  let list = off ? [] : items();
   if (reveal) {
     const p = (performance.now() - reveal.t0) / reveal.ms;
     if (p >= 1 || playing || drag || reveal.step !== doc.cur) reveal = null;
     else { list = revealList(list, p, reveal.ids); scheduleRender(); }
   }
-  renderItems(list, { ghost: !playing, ui: !playing && !reveal });
+  renderItems(list, { ghost: !playing && !off, ui: !playing && !reveal && !off });
   if (lastBench.size !== lastBenchCount) { lastBenchCount = lastBench.size; if (typeof updateOpts === 'function') updateOpts(); }
 }
 let rafPending = false;
 function scheduleRender() { if (rafPending) return; rafPending = true; requestAnimationFrame(() => { rafPending = false; renderItemsNow(); }); }
+
+
+/* ---------- media slides: screenshots and video clips to draw on ----------
+   A slide can sit on a picture instead of the pitch: a screenshot, or one moment of a video clip. The same tools draw on
+   it. Slides on the same clip are pause points: playing the slides plays the clip on to each one, stops, and draws its
+   annotations. The board file only describes the media (name, size, length); the picture or clip itself is kept in this
+   device's media store (IndexedDB), so boards stay small and a clip is stored once however many slides use it. */
+const mlayer = $('#mediaLayer'), mvid = mlayer.querySelector('video'), mimg = mlayer.querySelector('img'), mmsg = $('#mmsg'), fadeEl = $('#fade');
+const r3 = v => Math.round(v * 1000) / 1000;
+const mdb = (() => {
+  let p = null;
+  const open = () => p || (p = new Promise((res, rej) => { try { const r = indexedDB.open('hs-media', 1); r.onupgradeneeded = () => r.result.createObjectStore('m'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); r.onblocked = () => rej(new Error('blocked')); } catch (e) { rej(e); } }));
+  const tx = (mode, fn) => open().then(db => new Promise((res, rej) => { const t = db.transaction('m', mode), q = fn(t.objectStore('m')); t.oncomplete = () => res(q && q.result); t.onerror = t.onabort = () => rej(t.error || new Error('idb')); }));
+  return { put: (id, blob) => tx('readwrite', s => s.put(blob, id)), get: id => tx('readonly', s => s.get(id)), del: id => tx('readwrite', s => s.delete(id)), keys: () => tx('readonly', s => s.getAllKeys()) };
+})();
+function mediaOf(st) {
+  const r = st && st.media, m = r && doc.media && doc.media[r.id];
+  return m ? { id: r.id, kind: m.kind, name: m.name, w: m.w, h: m.h, dur: m.dur || 0, t: m.kind === 'video' ? +r.t || 0 : 0 } : null;
+}
+function stageMedia() { return mediaOf(doc.steps[stageIdx()]); }
+const stageKeyOf = i => { const m = mediaOf(doc.steps[i]); return m ? 'm:' + m.id : 'p'; };
+const boardHasMedia = () => doc.steps.some(s => s.media);
+// The picture is fitted inside the pitch's own 105 x 68 space, so every tool and size works on it unchanged.
+function mediaRect(m) { const a = m.w / m.h; let w = W, h = W / a; if (h > H) { h = H; w = H * a; } return { x: (W - w) / 2, y: (H - h) / 2, w, h }; }
+function fmtT(t) { t = Math.max(0, +t || 0); const m = Math.floor(t / 60), s = t - m * 60; return `${m}:${s < 10 ? '0' : ''}${s.toFixed(1)}`; }
+const isMediaFile = fl => /^(image|video)\//.test(fl.type || '') || /\.(mp4|mov|m4v|webm|png|jpe?g|webp|gif)$/i.test(fl.name || '');
+const mediaReady = i => { const m = mediaOf(doc.steps[i]), r = m && MED.get(m.id); return !!(r && r.state === 'ok' && shownId === m.id); };
+function ensureMedia(id) {
+  const r = MED.get(id); if (r && r.state !== 'loading') return Promise.resolve(r);
+  if (!medP.has(id)) {
+    MED.set(id, { state: 'loading' });
+    medP.set(id, mdb.get(id).catch(() => null).then(blob => { const rec = blob ? { state: 'ok', blob, url: URL.createObjectURL(blob) } : { state: 'missing' }; MED.set(id, rec); medP.delete(id); return rec; }));
+  }
+  return medP.get(id);
+}
+function keepBlob(id, blob) {
+  mdb.put(id, blob).then(() => { try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {} },
+    () => { if (!storeWarn) { storeWarn = true; toast('This browser can’t keep videos and pictures between visits here. You’ll be asked for the file again next time.'); } });
+}
+// What the stage shows follows the slide: the pitch, or that slide's picture. Called before anything draws.
+function syncStage() {
+  const md = stageMedia(), k = md ? 'm:' + md.id : 'p';
+  if (stageI == null) {
+    const ck = `${doc.id}|${doc.cur}|${md ? md.id : ''}`;
+    if (ck !== vctl.key) { vctl.key = ck; if (vctl.mode === 'play') { cancelAnimationFrame(vctl.raf); vctl.mode = null; try { mvid.pause(); } catch (e) {} } if (vctl.mode !== 'present') vctl.scrub = null; }
+  }
+  if (k !== stageKey) {
+    stageKey = k;
+    stage.classList.toggle('media', !!md);
+    showMedia(md);
+    if (applyView()) renderPitch();
+    updateVbar();
+  }
+  if (md) syncMediaTime(md);
+}
+function refreshStage() { stageKey = ''; syncStage(); renderAll(); }
+function showMedia(md) {
+  if (!md) { shownId = null; mlayer.className = ''; mmsg.hidden = true; try { mvid.pause(); } catch (e) {} return; }
+  const rec = MED.get(md.id);
+  if (!rec || rec.state !== 'ok') {
+    shownId = null; mlayer.className = ''; try { mvid.pause(); } catch (e) {}
+    const st = rec ? rec.state : 'loading', nm = esc(md.name || (md.kind === 'video' ? 'This video' : 'This picture'));
+    mmsg.hidden = false;
+    mmsg.innerHTML = st === 'loading' ? `<p>Loading ${nm}…</p>`
+      : st === 'bad' ? `<p><b>${nm}</b> can’t be played by this browser.</p><p class="s">MP4 (H.264) and WebM clips play everywhere. Choose another copy of the clip to carry on; your drawings stay.</p><button class="btn" data-relink="${md.id}">${icon('upload')}<span>Choose a file</span></button>`
+      : `<p><b>${nm}</b> isn’t on this device.</p><p class="s">Videos and pictures stay on the device they were added on. Choose the file again and your drawings line up as before.</p><button class="btn" data-relink="${md.id}">${icon('upload')}<span>Choose the file</span></button>`;
+    if (!rec) ensureMedia(md.id).then(refreshStage);
+    return;
+  }
+  mmsg.hidden = true;
+  if (shownId === md.id) return;
+  shownId = md.id;
+  if (md.kind === 'video') {
+    mlayer.className = 'v'; mvid.src = rec.url; vctl.want = md.t;
+    try { mvid.load(); } catch (e) {}
+    // iPhones and iPads only paint a frame once the clip has started, so start it silently and stop at once.
+    if (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform || ''))) {
+      const pp = mvid.play(); if (pp && pp.then) pp.then(() => { if (!vctl.mode) { mvid.pause(); try { mvid.currentTime = vctl.want || 0; } catch (e) {} } }).catch(() => {});
+    }
+  } else { mlayer.className = 'i'; mimg.src = rec.url; try { mvid.pause(); } catch (e) {} }
+}
+function syncMediaTime(md) {
+  if (md.kind !== 'video' || vctl.mode || shownId !== md.id) return;
+  const t = stageI == null && vctl.scrub != null ? vctl.scrub : md.t;
+  vctl.want = t;
+  if (mvid.readyState >= 1 && Math.abs(mvid.currentTime - t) > .02) { try { mvid.currentTime = t; } catch (e) {} }
+}
+mvid.addEventListener('loadedmetadata', () => { if (!vctl.mode && vctl.want != null) { try { mvid.currentTime = vctl.want; } catch (e) {} } });
+mvid.addEventListener('error', () => { if (!shownId) return; const rec = MED.get(shownId); if (rec && rec.state === 'ok') { rec.state = 'bad'; refreshStage(); } });
+mvid.addEventListener('ended', () => { if (vctl.mode === 'play') vStop(true); });
+// The picture is an HTML layer under the drawing layer; it follows the camera so zoom and pan carry it along.
+function placeMedia() {
+  if (stageKey === 'p') return;
+  const md = stageMedia(); if (!md) return;
+  const m = itemSvg.getScreenCTM(), sr = stage.getBoundingClientRect(); if (!m) return;
+  const r = mediaRect(md);
+  mlayer.style.transform = `translate(${f(m.a * r.x + m.e - sr.left)}px,${f(m.d * r.y + m.f - sr.top)}px)`;
+  mlayer.style.width = f(r.w * m.a) + 'px'; mlayer.style.height = f(r.h * m.d) + 'px';
+}
+mmsg.addEventListener('click', e => { const b = e.target.closest('[data-relink]'); if (b) { relinkId = b.dataset.relink; $('#mediaIn').click(); } });
+
+/* adding media */
+function onceEv(el, ev, ms) {
+  return new Promise((res, rej) => {
+    const ok = () => { clean(); res(); }, bad = () => { clean(); rej(new Error('media')); }, to = setTimeout(bad, ms);
+    const clean = () => { clearTimeout(to); el.removeEventListener(ev, ok); el.removeEventListener('error', bad); };
+    el.addEventListener(ev, ok); el.addEventListener('error', bad);
+  });
+}
+async function probeMedia(file) {
+  if (/^video\//.test(file.type || '') || /\.(mp4|mov|m4v|webm)$/i.test(file.name || '')) {
+    const url = URL.createObjectURL(file), v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.preload = 'metadata'; v.src = url;
+    try {
+      await onceEv(v, 'loadedmetadata', 20000);
+      let dur = v.duration;
+      // Clips recorded in a browser often don't say how long they are until they are played to the end.
+      if (!isFinite(dur)) { v.currentTime = 1e7; await onceEv(v, 'seeked', 8000).catch(() => {}); dur = isFinite(v.duration) ? v.duration : v.currentTime; }
+      if (!v.videoWidth || !v.videoHeight || !(dur > 0)) throw new Error('media');
+      return { kind: 'video', blob: file, url, w: v.videoWidth, h: v.videoHeight, dur: r3(dur) };
+    } catch (e) { URL.revokeObjectURL(url); throw e; }
+    finally { v.removeAttribute('src'); try { v.load(); } catch (e) {} }
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image(); img.src = url; await img.decode();
+    const w = img.naturalWidth, h = img.naturalHeight; if (!w || !h) throw new Error('media');
+    const k = Math.min(1, 2560 / Math.max(w, h));
+    if (k === 1 && file.size < 5e6 && /^image\/(png|jpeg|webp)$/.test(file.type || '')) return { kind: 'image', blob: file, url, w, h };
+    const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(w * k)); cv.height = Math.max(1, Math.round(h * k));
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    const blob = await new Promise(res => cv.toBlob(res, 'image/jpeg', .9));
+    URL.revokeObjectURL(url);
+    return { kind: 'image', blob, url: URL.createObjectURL(blob), w: cv.width, h: cv.height };
+  } catch (e) { URL.revokeObjectURL(url); throw e; }
+}
+async function addMediaFiles(files) {
+  files = [...(files || [])].filter(isMediaFile); const rl = relinkId; relinkId = null;
+  if (!files.length) return;
+  stopPlay(); vStop(); if (sheetKind) closeSheet();
+  if (rl) {
+    // The file for a slide whose clip or picture isn't on this device: the drawings keep their place.
+    const meta = doc.media[rl]; if (!meta) return;
+    let m; try { m = await probeMedia(files[0]); } catch (e) { toast('That file couldn’t be opened. Try an MP4 clip, or a PNG or JPG picture.'); return; }
+    if (m.kind !== meta.kind) { URL.revokeObjectURL(m.url); toast(`That slide needs ${meta.kind === 'video' ? 'a video' : 'a picture'}.`); return; }
+    const old = MED.get(rl); if (old && old.url) URL.revokeObjectURL(old.url);
+    MED.set(rl, { state: 'ok', blob: m.blob, url: m.url }); keepBlob(rl, m.blob);
+    meta.w = m.w; meta.h = m.h; if (m.kind === 'video') meta.dur = m.dur; meta.name = String(files[0].name || meta.name).slice(0, 120);
+    persist(); shownId = null; refreshStage(); applyCam();
+    return;
+  }
+  let at = doc.cur, first = -1; const bad = []; let last = null;
+  for (const file of files) {
+    if (doc.steps.length >= MAXSTEPS) { toast(`A board holds up to ${MAXSTEPS} slides. Start a new session for more.`); break; }
+    let m; try { m = await probeMedia(file); } catch (e) { bad.push(file.name || 'That file'); continue; }
+    const id = 'm' + uid(), nm = String(file.name && !/^image\.(png|jpe?g)$/i.test(file.name) ? file.name : m.kind === 'video' ? 'Video' : 'Screenshot').slice(0, 120);
+    doc.media[id] = m.kind === 'video' ? { kind: 'video', name: nm, w: m.w, h: m.h, dur: m.dur } : { kind: 'image', name: nm, w: m.w, h: m.h };
+    MED.set(id, { state: 'ok', blob: m.blob, url: m.url }); keepBlob(id, m.blob);
+    const st = { items: [], media: m.kind === 'video' ? { id, t: 0 } : { id } }, cur = doc.steps[at];
+    // A board that is still one empty pitch starts with the media instead of keeping a blank slide in front of it.
+    if (first < 0 && doc.steps.length === 1 && !cur.items.length && !cur.media && !cur.title && !cur.note) { doc.steps[0] = st; at = 0; first = 0; }
+    else { doc.steps.splice(at + 1, 0, st); at++; if (first < 0) first = at; }
+    last = m;
+  }
+  if (first >= 0) {
+    doc.cur = first; sel = null; group.clear(); selMode = null; polyDraft = null; reveal = null; vctl.scrub = null;
+    commit(); renderAll(); applyCam(); revealChip(document.querySelector('.stepw.on'));
+    const n = at - first + 1;
+    toast(bad.length ? `${bad[0]} couldn’t be opened; the rest ${n > 1 ? 'were' : 'was'} added.` : n > 1 ? `${n} slides added. Draw on them with any tool.` : last.kind === 'video' ? 'Video added. Scrub to the moment you want, then draw on it.' : 'Picture added. Draw on it with any tool.');
+  } else if (bad.length) toast(`${bad[0]} couldn’t be opened. Try an MP4 clip, or a PNG or JPG picture.`);
+}
+$('#mediaIn').addEventListener('change', e => { const fs = [...(e.target.files || [])]; e.target.value = ''; addMediaFiles(fs); });
+window.addEventListener('paste', e => {
+  const tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'textarea') return;
+  const fs = [...((e.clipboardData && e.clipboardData.files) || [])].filter(isMediaFile);
+  if (fs.length) { e.preventDefault(); addMediaFiles(fs); }
+});
+function insertStep(st, at, msg) {
+  if (doc.steps.length >= MAXSTEPS) { toast(`A board holds up to ${MAXSTEPS} slides. Start a new session for more.`); return false; }
+  stopPlay(); flushViewCommit(); vStop();
+  const tt = doc.steps[doc.cur].title; if (tt && !st.title) st.title = tt;
+  doc.steps.splice(at, 0, st); doc.cur = at; sel = null; group.clear(); selMode = null; polyDraft = null; reveal = null; vctl.scrub = null;
+  commit(); renderAll(); applyCam(); if (msg) toast(msg); revealChip(document.querySelector('.stepw.on'));
+  return true;
+}
+// The players for a tactic-board slide added after footage: the nearest pitch slide's.
+function nearPitch(i) { for (let k = i; k >= 0; k--) if (!doc.steps[k].media) return k; for (let k = i + 1; k < doc.steps.length; k++) if (!doc.steps[k].media) return k; return -1; }
+function prevVideo(i) {
+  for (let k = i; k >= 0; k--) { const m = mediaOf(doc.steps[k]); if (m && m.kind === 'video') { let t = 0; for (let j = 0; j <= i; j++) { const q = doc.steps[j].media; if (q && q.id === m.id) t = Math.max(t, +q.t || 0); } return { ...m, t }; } }
+  return null;
+}
+
+/* the video transport: play, scrub and step to the moment a slide pauses on */
+const offTime = () => { if (stageI != null || vctl.scrub == null) return false; const md = stageMedia(); return !!(md && md.kind === 'video'); };
+function vbarWanted() { if (stageI != null || playing || focusMode) return false; const md = stageMedia(), rec = md && MED.get(md.id); return !!(md && md.kind === 'video' && rec && rec.state === 'ok'); }
+function updateVbar() {
+  const bar = $('#vbar'), on = vbarWanted();
+  if (!on) { if (!bar.hidden) { bar.hidden = true; stage.classList.remove('hasv'); layoutOverlays(); } return; }
+  const md = stageMedia(), off = offTime(), t = vctl.scrub != null ? vctl.scrub : md.t, pl = vctl.mode === 'play';
+  if (bar.dataset.m !== md.id) {
+    bar.dataset.m = md.id; bar.dataset.pl = '';
+    bar.innerHTML = `<div class="vrow"><button class="ib vp" data-v="play"></button><button class="ib" data-v="back" aria-label="Back one frame" title="Back one frame (←)">${icon('fback')}</button><input type="range" data-vscrub min="0" max="${md.dur}" step="0.01" aria-label="Video position"><button class="ib" data-v="fwd" aria-label="Forward one frame" title="Forward one frame (→)">${icon('ffwd')}</button><output></output></div><div class="vrow v2" hidden><button class="chip pri" data-v="pause">${icon('plus')}<span>Pause here</span></button><button class="chip" data-v="retime"><span>Move slide here</span></button><button class="chip" data-v="reset"><span>Back<i class="lg"></i></span></button></div>`;
+  }
+  const pb = bar.querySelector('[data-v="play"]');
+  if (bar.dataset.pl !== String(pl)) { bar.dataset.pl = String(pl); pb.innerHTML = icon(pl ? 'pause' : 'play'); pb.setAttribute('aria-label', pl ? 'Pause the video' : 'Play the video'); pb.title = pl ? 'Pause (K)' : 'Play the video (K)'; }
+  const rg = bar.querySelector('[data-vscrub]'); rg.max = md.dur; if (Math.abs(+rg.value - t) > .005) rg.value = t;
+  bar.querySelector('output').innerHTML = `${fmtT(t)}<span class="lg"> / ${fmtT(md.dur)}</span>`;
+  const v2 = bar.querySelector('.v2'), show = off && !pl;
+  bar.querySelector('[data-v="reset"] i').textContent = ` to ${fmtT(md.t)}`;
+  const was = bar.hidden || v2.hidden === show;
+  v2.hidden = !show;
+  if (was) { bar.hidden = false; stage.classList.add('hasv'); stage.style.setProperty('--vb', bar.offsetHeight + 'px'); layoutOverlays(); }
+}
+// Moving the picture. A slide with nothing drawn on it simply moves to the new moment; one with drawings keeps its
+// moment, and the transport offers a new pause point here instead.
+function vScrub(t) {
+  const md = stageMedia(); if (!md || md.kind !== 'video') return;
+  if (vctl.mode === 'play') { cancelAnimationFrame(vctl.raf); vctl.mode = null; try { mvid.pause(); } catch (e) {} }
+  t = clamp(t, 0, md.dur || 0);
+  const st = doc.steps[doc.cur];
+  if (!st.items.length) { st.media.t = r3(t); vctl.scrub = null; vctl.dirty = true; }
+  else vctl.scrub = Math.abs(t - md.t) < .012 ? null : t;
+  vctl.want = t; try { mvid.currentTime = t; } catch (e) {}
+  sel = null; group.clear(); selMode = null;
+  renderItemsNow(); updateSelbar(); updateVbar();
+}
+function vScrubEnd() { if (vctl.dirty) { vctl.dirty = false; commit(); } }
+function vToggle() {
+  const md = stageMedia(); if (!md || md.kind !== 'video' || !mediaReady(doc.cur)) return;
+  if (vctl.mode === 'play') { vStop(true); return; }
+  sel = null; group.clear(); selMode = null; polyDraft = null;
+  if (mvid.currentTime >= (md.dur || 0) - .05) { try { mvid.currentTime = 0; } catch (e) {} }
+  vctl.mode = 'play'; mvid.playbackRate = 1;
+  const pp = mvid.play(); if (pp && pp.catch) pp.catch(() => vStop(true));
+  const tick = () => {
+    if (vctl.mode !== 'play') return;
+    const had = vctl.scrub != null; vctl.scrub = mvid.currentTime;
+    if (!had) { renderItemsNow(); updateSelbar(); }
+    updateVbar();
+    vctl.raf = requestAnimationFrame(tick);
+  };
+  vctl.scrub = mvid.currentTime; renderAll();
+  vctl.raf = requestAnimationFrame(tick);
+}
+function vStop(settle) {
+  if (vctl.mode !== 'play') return;
+  cancelAnimationFrame(vctl.raf); vctl.mode = null; try { mvid.pause(); } catch (e) {}
+  if (settle) {
+    const t = mvid.currentTime, st = doc.steps[doc.cur], md = stageMedia();
+    if (md && st.media) { if (!st.items.length) { st.media.t = r3(clamp(t, 0, md.dur || t)); vctl.scrub = null; commit(); } else vctl.scrub = Math.abs(t - md.t) < .012 ? null : t; }
+    renderAll();
+  }
+}
+function vPauseHere() {
+  const md = stageMedia(); if (!md || vctl.scrub == null) return;
+  const t = r3(vctl.scrub);
+  insertStep({ items: [], media: { id: md.id, t } }, t < md.t ? doc.cur : doc.cur + 1, 'Pause point added. Draw on it with any tool.');
+}
+function nudgeVbar() {
+  const v2 = $('#vbar .v2'); if (v2) { v2.classList.remove('nudge'); void v2.offsetWidth; v2.classList.add('nudge'); }
+  if (Date.now() - vctl.nudged > 5000) { vctl.nudged = Date.now(); toast('Tap Pause here to draw on this moment.'); }
+}
+$('#vbar').addEventListener('input', e => { if (e.target.dataset && 'vscrub' in e.target.dataset) vScrub(+e.target.value); });
+$('#vbar').addEventListener('change', e => { if (e.target.dataset && 'vscrub' in e.target.dataset) vScrubEnd(); });
+$('#vbar').addEventListener('click', e => {
+  const b = e.target.closest('[data-v]'); if (!b) return;
+  const md = stageMedia(); if (!md) return;
+  const now = vctl.mode === 'play' ? mvid.currentTime : vctl.scrub != null ? vctl.scrub : md.t;
+  switch (b.dataset.v) {
+    case 'play': vToggle(); break;
+    case 'back': vScrub(now - 1 / 30); vScrubEnd(); break;
+    case 'fwd': vScrub(now + 1 / 30); vScrubEnd(); break;
+    case 'pause': vPauseHere(); break;
+    case 'retime': doc.steps[doc.cur].media.t = r3(vctl.scrub); vctl.scrub = null; commit(); renderAll(); toast(`Slide ${doc.cur + 1} moved to ${fmtT(doc.steps[doc.cur].media.t)}`, { label: 'Undo', fn: undo }); break;
+    case 'reset': vStop(); vctl.scrub = null; renderAll(); break;
+  }
+});
+
+/* media in exports */
+function fitAspect(vb, a) { let [x, y, w, h] = vb; if (w / h < a) { const nw = h * a; x -= (nw - w) / 2; w = nw; } else { const nh = w / a; y -= (nh - h) / 2; h = nh; } return [x, y, w, h]; }
+function seekTo(v, t) {
+  return new Promise(res => {
+    if (Math.abs(v.currentTime - t) < .001 && v.readyState >= 2) { res(); return; }
+    const done = () => { v.removeEventListener('seeked', done); clearTimeout(to); setTimeout(res, 20); }, to = setTimeout(done, 3000);
+    v.addEventListener('seeked', done);
+    try { v.currentTime = t; } catch (e) { done(); }
+  });
+}
+// The picture for a media slide, ready to draw on a canvas: the image, or the clip stopped at time t.
+async function frameOf(md, t) {
+  const rec = await ensureMedia(md.id); if (!rec || rec.state !== 'ok') return null;
+  try {
+    if (md.kind === 'image') { if (!rec.img) { rec.img = new Image(); rec.img.src = rec.url; } await rec.img.decode(); return rec.img; }
+    let v = rec.cap;
+    if (!v) { v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = rec.url; await onceEv(v, 'loadeddata', 15000); rec.cap = v; }
+    await seekTo(v, clamp(t != null ? t : md.t, 0, Math.max(0, (md.dur || 0) - .001)));
+    return v;
+  } catch (e) { return null; }
+}
+function endStage() { stageI = null; syncStage(); renderItemsNow(); }
+// A slide as a picture: pitch slides from their drawing, media slides with their picture under the drawings.
+async function slideRaster(i, px) {
+  const { svg, w, h, vb, md } = slideSVG(i, px), img = await svgImage(svg);
+  if (!md) return { img, w, h, dark: (THEMES[doc.theme] || THEMES.neon).dark || !!doc.stadium };
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d'), src = await frameOf(md), r = mediaRect(md), k = w / vb[2];
+  ctx.fillStyle = MTHEME.bg; ctx.fillRect(0, 0, w, h);
+  if (src) ctx.drawImage(src, (r.x - vb[0]) * k, (r.y - vb[1]) * k, r.w * k, r.h * k);
+  else { ctx.fillStyle = '#9AA0A8'; ctx.font = `500 ${Math.round(w * .028)}px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText(`${md.name || 'This file'} isn’t on this device`, w / 2, h / 2); }
+  ctx.drawImage(img, 0, 0, w, h);
+  return { img: cv, w, h, dark: true };
+}
+// Board files carry their pictures inside them; clips are too large, so they are named and asked for on the other device.
+async function exportDoc(d) {
+  const o = clone(d); o.media = {};
+  const used = new Set((o.steps || []).map(st => st.media && st.media.id).filter(Boolean));
+  for (const id of used) {
+    const m = d.media && d.media[id]; if (!m) continue;
+    o.media[id] = { ...m }; delete o.media[id].data;
+    if (m.kind !== 'image') continue;
+    try {
+      const rec = await ensureMedia(id); if (!rec || !rec.blob) continue;
+      const url = URL.createObjectURL(rec.blob);
+      try {
+        const img = new Image(); img.src = url; await img.decode();
+        const k = Math.min(1, 1920 / Math.max(img.naturalWidth, img.naturalHeight)), cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(img.naturalWidth * k)); cv.height = Math.max(1, Math.round(img.naturalHeight * k));
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        o.media[id].data = cv.toDataURL('image/jpeg', .86);
+      } finally { URL.revokeObjectURL(url); }
+    } catch (e) {}
+  }
+  return o;
+}
+const docHasVideo = d => Object.values((d && d.media) || {}).some(m => m.kind === 'video');
+// Pictures that arrive inside a board file go into this device's media store; the board keeps only their description.
+function takeEmbedded(d) {
+  for (const [id, m] of Object.entries(d.media || {})) {
+    if (!m.data) continue;
+    const data = m.data; delete m.data;
+    const have = MED.get(id); if (have && have.state === 'ok') continue;
+    try {
+      const k = data.indexOf(','), bin = atob(data.slice(k + 1)), a = new Uint8Array(bin.length);
+      for (let j = 0; j < bin.length; j++) a[j] = bin.charCodeAt(j);
+      const blob = new Blob([a], { type: data.slice(5, data.indexOf(';')) });
+      MED.set(id, { state: 'ok', blob, url: URL.createObjectURL(blob) }); medP.delete(id); keepBlob(id, blob);
+    } catch (e) {}
+  }
+}
+// Media no board uses any more is cleared out, a little after start-up, never while it could still be undone back.
+setTimeout(async () => {
+  try {
+    const keys = await mdb.keys(), used = new Set(), scan = d => ((d && d.steps) || []).forEach(st => st && st.media && used.add(st.media.id));
+    scan(doc); (store.get('hs.lib') || []).forEach(b => scan(b && b.doc));
+    for (const k of keys) if (!used.has(k) && !MED.has(k)) await mdb.del(k);
+  } catch (e) {}
+}, 9000);
 
 /* ---------- history & persistence ---------- */
 const snap = () => JSON.stringify({ steps: doc.steps, cur: doc.cur });
@@ -1770,7 +2225,7 @@ function commit() {
   fut = []; lastSnap = s; persist(); updateTop();
 }
 function quietSnap() { lastSnap = snap(); persist(); }
-function restoreSnap(s) { const o = JSON.parse(s); doc.steps = o.steps; doc.cur = clamp(o.cur, 0, o.steps.length - 1); sel = null; group.clear(); selMode = null; polyDraft = null; persist(); renderAll(); cancelAnimationFrame(viewAnim); dispView = null; applyCam(); }
+function restoreSnap(s) { vStop(); vctl.scrub = null; const o = JSON.parse(s); doc.steps = o.steps; doc.cur = clamp(o.cur, 0, o.steps.length - 1); sel = null; group.clear(); selMode = null; polyDraft = null; persist(); renderAll(); cancelAnimationFrame(viewAnim); dispView = null; applyCam(); }
 function undo() { if (!hist.length) return; stopPlay(); fut.push(lastSnap); lastSnap = hist.pop(); restoreSnap(lastSnap); }
 function redo() { if (!fut.length) return; stopPlay(); hist.push(lastSnap); lastSnap = fut.pop(); restoreSnap(lastSnap); }
 
@@ -1797,6 +2252,7 @@ function addPlayer(p) {
   let n = gk ? 1 : 2; while (nums.has(n)) n++;
   if (gk && nums.has(1)) { n = 13; while (nums.has(n)) n++; }
   const it = { id: uid(), type: 'player', team, x: f(p.x), y: f(p.y), label: gk ? 'GK' : '', num: n };
+  if (stageIsMedia()) { it.spot = true; it.label = ''; }
   items().push(it); sel = it.id; commit(); buzz();
 }
 function addKit(p) {
@@ -1888,6 +2344,8 @@ function onDown(e) {
   if (drag) return;
   if (e.button > 0) return;
   if (playing) { stopPlay(); return; }
+  if (vctl.mode === 'play') { vStop(true); return; }
+  if (offTime()) { nudgeVbar(); return; }
   const p = toPitch(e);
   const hEl = e.target.closest('[data-h]'), iEl = e.target.closest('#items [data-id]');
   const hit = iEl ? getItem(iEl.dataset.id) : null;
@@ -2104,7 +2562,15 @@ function movePlan(A, B) {
   const dr = revealMs(n), ms = dr * .9 + 1400;
   return { ms, d1: dr / ms, m0: dr * .9 / ms, n, S };
 }
-const moveDur = i => movePlan(doc.steps[i].items, doc.steps[i + 1].items).ms / doc.speed;
+// How slide i hands over to the next: 'move' (same pitch or same frame: players travel, drawings draw on),
+// 'video' (the clip plays on to the next pause point) or 'cut' (a different picture: dip through dark).
+function transKind(i) {
+  const a = mediaOf(doc.steps[i]), b = mediaOf(doc.steps[i + 1]);
+  if (!a && !b) return 'move';
+  if (a && b && a.id === b.id) { if (a.kind === 'video' && b.t > a.t + .03) return 'video'; if (a.kind === 'image' || Math.abs(a.t - b.t) <= .03) return 'move'; }
+  return 'cut';
+}
+const moveDur = i => { const k = transKind(i); return k === 'video' ? Math.max(120, (doc.steps[i + 1].media.t - doc.steps[i].media.t) * 1000) / doc.speed : k === 'cut' ? 700 / doc.speed : movePlan(doc.steps[i].items, doc.steps[i + 1].items).ms / doc.speed; };
 function introDur(i) { const n = slotsOf(doc.steps[i].items, it => DRAWN[it.type]).n; return n ? revealMs(n) / doc.speed : 0; }
 function stagger(j, n, p) {
   if (n <= 1) return p;
@@ -2205,7 +2671,7 @@ function newDrawings(fromI, toI) {
 function play() {
   const n = doc.steps.length;
   if (n < 2) { toast('Add a second slide, move some players, then press play.'); return; }
-  sel = null; group.clear(); selMode = null; polyDraft = null;
+  sel = null; group.clear(); selMode = null; polyDraft = null; vStop(); vctl.scrub = null;
   let i = doc.cur >= n - 1 ? 0 : doc.cur, phase = 'intro', t0 = performance.now();
   doc.cur = i; cancelAnimationFrame(viewAnim); dispView = null; applyCam(); reveal = null;
   playing = { raf: 0, tap: doc.playMode === 'tap', next: false, back: false, skip: false, sfx: null };
@@ -2235,20 +2701,52 @@ function play() {
       if (playing.tap) playing.next = false;
       if (go) {
         if (atEnd) { if (doc.loop) { phase = 'wrap'; t0 = now; hint(); } else { stopPlay(); return; } }
-        else { phase = 'move'; t0 = now; playing.sfx = null; hint(); }
+        else { phase = 'move'; t0 = now; playing.sfx = null; playing.tk = transKind(i); if (playing.tk === 'video' && !mediaReady(i)) playing.tk = 'cut'; playing.v = false; playing.cut = false; hint(); }
       }
     } else if (phase === 'wrap') {
       const last = doc.steps.length - 1, W = still ? 0 : 1400 / spd, t = W ? Math.min(1, el / W) : 1;
-      if (!still && t < 1) {
+      if (!still && t < 1 && stageKeyOf(last) !== stageKeyOf(0)) {
+        // Back to a different picture: dip through dark, as between any two pictures.
+        fadeEl.style.opacity = f(1 - Math.abs(1 - 2 * t));
+        if (t >= .5 && doc.cur !== 0) { doc.cur = 0; dispView = null; applyCam(); }
+        renderItems(t < .5 ? doc.steps[last].items : introDur(0) ? revealList(doc.steps[0].items, 0) : doc.steps[0].items, {});
+      } else if (!still && t < 1) {
         dispView = lerpView(viewOf(last), viewOf(0), ease(t)); applyCam();
         if (t < .5) renderItems(fadeList(doc.steps[last].items, 1 - ease(t / .5)), {});
         else renderItems(fadeList(introDur(0) ? revealList(doc.steps[0].items, 0) : doc.steps[0].items, ease((t - .5) / .5)), {});
       }
       if (t >= 1) {
+        fadeEl.style.opacity = 0;
         i = 0; doc.cur = 0; dispView = null; applyCam(); t0 = now; updateSteps(); updateTop();
         if (!still && introDur(0)) { phase = 'intro'; renderItems(revealList(items(), 0), {}); } else { phase = 'hold'; showStep(); }
         hint();
       }
+    } else if (playing.tk === 'video') {
+      // The clip plays on from this slide's moment to the next one's, then stops for its drawings.
+      const a = mediaOf(doc.steps[i]), b = mediaOf(doc.steps[i + 1]), span = Math.max(.001, b.t - a.t);
+      if (!playing.v) {
+        playing.v = true; vctl.mode = 'present';
+        try { if (Math.abs(mvid.currentTime - a.t) > .05) mvid.currentTime = a.t; mvid.playbackRate = spd; const pp = mvid.play(); if (pp && pp.catch) pp.catch(() => {}); } catch (e) {}
+      }
+      const ct = mvid.currentTime, pr = clamp01((ct - a.t) / span);
+      // A tap skips ahead; a clip that stalls is not waited for beyond a couple of seconds.
+      if (!(still || ct >= b.t - .012 || mvid.ended || el > span * 1000 / spd + 2500)) {
+        renderItems(el < 260 ? fadeList(doc.steps[i].items, 1 - el / 260) : [], {});
+        dispView = lerpView(viewOf(i), viewOf(i + 1), ease(pr)); applyCam();
+        const bar = document.querySelector(`.step[data-step="${i + 1}"] .bar`); if (bar) bar.style.transform = `scaleX(${pr})`;
+      } else {
+        try { mvid.pause(); mvid.playbackRate = 1; mvid.currentTime = b.t; } catch (e) {}
+        vctl.mode = null; playing.v = false;
+        i++; doc.cur = i; dispView = null; applyCam(); t0 = now; updateSteps(); updateTop();
+        if (!still && introDur(i)) { phase = 'intro'; renderItems(revealList(items(), 0), {}); } else { phase = 'hold'; showStep(); }
+        hint();
+      }
+    } else if (playing.tk === 'cut') {
+      const D = still ? 0 : 700 / spd, t = D ? Math.min(1, el / D) : 1;
+      fadeEl.style.opacity = t < 1 ? f(1 - Math.abs(1 - 2 * t)) : 0;
+      if (t >= .5 && !playing.cut) { playing.cut = true; i++; doc.cur = i; dispView = null; applyCam(); updateSteps(); updateTop(); }
+      renderItems(playing.cut && !still && introDur(i) ? revealList(doc.steps[i].items, 0) : doc.steps[i].items, {});
+      if (t >= 1) { t0 = now; if (!still && introDur(i)) phase = 'intro'; else { phase = 'hold'; showStep(); } hint(); }
     } else {
       const t = still ? 1 : Math.min(1, el / (moveDur(i) || trans));
       if (!still && SFX.on) {
@@ -2272,6 +2770,8 @@ function setTapHint() {}
 function stopPlay() {
   if (!playing) return;
   setTapHint(null);
+  if (vctl.mode === 'present') { try { mvid.pause(); mvid.playbackRate = 1; } catch (e) {} vctl.mode = null; }
+  fadeEl.style.opacity = 0;
   cancelAnimationFrame(playing.raf); playing = null; dispView = null; applyCam();
   stage.classList.remove('playing'); quietSnap(); renderAll();
 }
@@ -2284,10 +2784,12 @@ function addStep() {
   const v = doc.steps[doc.cur].view;
   const t = doc.steps[doc.cur].title, ns = v ? { items: clone(items()), view: { ...v } } : { items: clone(items()) };
   if (t) ns.title = t;
+  const mr = doc.steps[doc.cur].media; if (mr) ns.media = { ...mr };
+  vStop(); vctl.scrub = null;
   if (doc.steps.length >= MAXSTEPS) { toast(`A board holds up to ${MAXSTEPS} slides. Start a new session for more.`); return; }
   doc.steps.splice(doc.cur + 1, 0, ns);
   doc.cur++; sel = null; selMode = null; polyDraft = null; commit(); renderAll();
-  toast(`Slide ${doc.cur + 1} added. Move players, then press play.`);
+  toast(mr ? `Slide ${doc.cur + 1} added on the same ${(doc.media[mr.id] || {}).kind === 'video' ? 'moment' : 'picture'}. Add the next drawings.` : `Slide ${doc.cur + 1} added. Move players, then press play.`);
   revealChip(document.querySelector('.stepw.on'));
 }
 function duplicateStep(i) {
@@ -2313,7 +2815,8 @@ function gotoStep(i) {
   doc.cur = clamp(i, 0, doc.steps.length - 1); sel = null; group.clear(); selMode = null; polyDraft = null; quietSnap();
   reveal = null; if (fromI !== doc.cur) startReveal(newDrawings(fromI, doc.cur));
   renderAll();
-  animateViewTo(viewOf(doc.cur), from);
+  // The camera glides between slides on the same picture or pitch; a change of picture is a cut.
+  animateViewTo(viewOf(doc.cur), stageKeyOf(fromI) === stageKeyOf(doc.cur) ? from : null);
   if (sheetKind === 'slide') renderSheet();
 }
 
@@ -2433,7 +2936,7 @@ function updateSelbar() {
   const t = T(); let b = [];
   const alphaBtn = () => { const v = Math.round(alphaOf(it) * 100); return `<button data-act="alpha" aria-label="Opacity ${v}%">${icon('opacity')}<span>${v}%</span></button>`; };
   switch (it.type) {
-    case 'player': b = [btn('edit', 'edit', 'Edit'), btn('hl', 'halo', it.hl ? 'Unmark' : 'Mark'), btn('dup', 'copy', 'Copy'), btn('del', 'trash', 'Delete', 'danger')]; break;
+    case 'player': b = [btn('edit', 'edit', 'Edit'), btn('hl', 'halo', it.hl ? 'Unmark' : 'Mark'), ...(it.spot || stageIsMedia() ? [btn('spot', it.spot ? 'player' : 'spot', it.spot ? 'Token' : 'Marker'), colorBtn(it.color || teamColor(it.team))] : []), btn('dup', 'copy', 'Copy'), btn('del', 'trash', 'Delete', 'danger')]; break;
     case 'arrow': b = [btn('style', it.style || 'pass', (ARROWS.find(a => a[0] === it.style) || ARROWS[0])[1]), btn('straight', 'straight', 'Straighten'), colorBtn(it.color || t.draw), alphaBtn(), btn('dup', 'copy', 'Copy'), btn('del', 'trash', 'Delete', 'danger')]; break;
     case 'rect': case 'circle': case 'poly': b = [btn('hatch', 'hatch', it.hatch ? 'Solid' : 'Hatched'), colorBtn(it.color || t.draw), alphaBtn(), btn('dup', 'copy', 'Copy'), btn('del', 'trash', 'Delete', 'danger')]; break;
     case 'shadow': b = [colorBtn(it.color || t.draw), alphaBtn(), btn('del', 'trash', 'Delete', 'danger')]; break;
@@ -2489,6 +2992,7 @@ $('#selbar').addEventListener('click', e => {
     case 'dup': duplicate(it); break;
     case 'edit': openSheet(it.type === 'text' ? 'text' : 'player', it.type === 'text' ? { id: it.id } : it.id); return;
     case 'hl': it.hl = !it.hl; commit(); break;
+    case 'spot': if (it.spot) delete it.spot; else it.spot = true; commit(); break;
     case 'style': { const o = ARROWS.map(a => a[0]); it.style = o[(o.indexOf(it.style) + 1) % o.length]; commit(); break; }
     case 'straight': it.bend = 0; commit(); break;
     case 'hatch': it.hatch = !it.hatch; commit(); break;
@@ -2528,9 +3032,9 @@ function updateSteps() {
   for (let i = 0; i < n; i++) {
     const on = i === doc.cur;
     const tt = doc.steps[i].title || '', sc = secOf(tt), first = i > 0 && sc && sc !== secOf(doc.steps[i - 1].title);
-    h += `<span class="stepw${on ? ' on' : ''}${first ? ' sec' : ''}"><button class="step" data-step="${i}" data-rove tabindex="${on ? 0 : -1}"${on ? ' aria-current="step"' : ''} aria-label="Slide ${i + 1}${tt ? `: ${esc(tt)}` : ''}${on ? '. Open slide notes' : ''}" title="${tt ? esc(tt) + '. ' : ''}${on ? 'Tap for notes and contents' : `Slide ${i + 1}`}">${i + 1}<i class="bar" aria-hidden="true"></i></button>${on && !playing ? `<button class="stepx stepd" data-dupstep="${i}" aria-label="Duplicate slide ${i + 1}" title="Duplicate slide ${i + 1}">${icon('copy')}</button>` : ''}${on && n > 1 && !playing ? `<button class="stepx" data-delstep="${i}" aria-label="Delete slide ${i + 1}" title="Delete slide ${i + 1}">${icon('close')}</button>` : ''}</span>`;
+    h += `<span class="stepw${on ? ' on' : ''}${first ? ' sec' : ''}${doc.steps[i].media ? ' med' : ''}"><button class="step" data-step="${i}" data-rove tabindex="${on ? 0 : -1}"${on ? ' aria-current="step"' : ''} aria-label="Slide ${i + 1}${tt ? `: ${esc(tt)}` : ''}${on ? '. Open slide notes' : ''}" title="${tt ? esc(tt) + '. ' : ''}${on ? 'Tap for notes and contents' : `Slide ${i + 1}`}">${i + 1}<i class="bar" aria-hidden="true"></i></button>${on && !playing ? `<button class="stepx stepd" data-dupstep="${i}" aria-label="Duplicate slide ${i + 1}" title="Duplicate slide ${i + 1}">${icon('copy')}</button>` : ''}${on && n > 1 && !playing ? `<button class="stepx" data-delstep="${i}" aria-label="Delete slide ${i + 1}" title="Delete slide ${i + 1}">${icon('close')}</button>` : ''}</span>`;
   }
-  h += `</div><button class="ib" id="btnAddStep" aria-label="Add the next slide after slide ${doc.cur + 1}" title="Next slide: continues from slide ${doc.cur + 1}">${icon('plus')}</button><button class="ib pbk${doc.playMode === 'tap' || doc.loop || doc.speed !== 1 ? ' set' : ''}" id="btnPlayback" aria-label="Playback: ${doc.playMode === 'tap' ? 'tap for each slide' : 'auto'}, ${doc.speed}×${doc.loop ? ', loop' : ''}" title="Playback">${icon('tune')}</button><button class="ib" id="btnFocus" aria-label="Hide toolbars" title="Full-screen pitch (F)">${icon('expand')}</button>`;
+  h += `</div><button class="ib" id="btnAddStep" aria-label="Add a slide after slide ${doc.cur + 1}" title="${boardHasMedia() ? 'Add a slide: video, picture or tactic board' : `Next slide: continues from slide ${doc.cur + 1}`}">${icon('plus')}</button><button class="ib pbk${doc.playMode === 'tap' || doc.loop || doc.speed !== 1 ? ' set' : ''}" id="btnPlayback" aria-label="Playback: ${doc.playMode === 'tap' ? 'tap for each slide' : 'auto'}, ${doc.speed}×${doc.loop ? ', loop' : ''}" title="Playback">${icon('tune')}</button><button class="ib" id="btnFocus" aria-label="Hide toolbars" title="Full-screen pitch (F)">${icon('expand')}</button>`;
   setHTML($('#steps'), h);
   updateFbar();
 }
@@ -2543,7 +3047,7 @@ $('#steps').addEventListener('click', e => {
   const s = e.target.closest('[data-step]'); if (s) { if (+s.dataset.step === doc.cur && !playing) openSheet('slide'); else gotoStep(+s.dataset.step); return; }
   const b = e.target.closest('button'); if (!b) return;
   if (b.id === 'btnPlay') playing ? stopPlay() : play();
-  else if (b.id === 'btnAddStep') addStep();
+  else if (b.id === 'btnAddStep') boardHasMedia() ? openSheet('add') : addStep();
   else if (b.id === 'btnSpeed') { doc.speed = doc.speed === 1 ? 2 : doc.speed === 2 ? .5 : 1; persist(); updateSteps(); }
   else if (b.id === 'btnLoop') { doc.loop = !doc.loop; persist(); updateSteps(); }
   else if (b.id === 'btnMode') { setPlayMode(doc.playMode === 'tap' ? 'auto' : 'tap'); const m = $('#btnMode'); if (m) m.focus({ preventScroll: true }); }
@@ -2742,7 +3246,7 @@ function squeezeIntoView() {
   if (doc.view === 'full') return;
   stopPlay();
   const att = doc.view === 'att', mx = x => f(att ? W / 2 + x / 2 : x / 2);
-  for (const st of doc.steps) for (const it of st.items) {
+  for (const st of doc.steps) if (!st.media) for (const it of st.items) {
     if (it.type === 'arrow') { it.x1 = mx(it.x1); it.x2 = mx(it.x2); }
     else if (it.type === 'rect') { const r = normRect(it); it.x = mx(r.x); it.y = r.y; it.w = f(r.w / 2); it.h = r.h; }
     else if (it.type === 'poly') it.pts = it.pts.map(q => ({ ...q, x: mx(q.x) }));
@@ -2755,7 +3259,7 @@ let focusMode = false, focusHinted = false, fbarZ = 100;
 function setFocus(on) {
   focusMode = on; $('#app').classList.toggle('focus', on);
   if (on) selMode = null;
-  updateFbar(); layoutOverlays();
+  updateFbar(); updateVbar(); layoutOverlays();
 }
 function updateFbar() {
   const n = doc.steps.length, z = baseVB ? (dispView || viewOf(doc.cur)).z : 1, zoomed = Math.abs(z - 1) > .005;
@@ -2777,7 +3281,7 @@ $('#fbar').addEventListener('click', e => {
     case 'notes': openSheet('slide'); break;
   }
 });
-function renderAll() { renderItemsNow(); updateSelbar(); updateSteps(); updateTop(); }
+function renderAll() { renderItemsNow(); updateSelbar(); updateSteps(); updateTop(); updateVbar(); }
 
 /* ---------- toast ---------- */
 let toastT = 0;
@@ -2871,7 +3375,7 @@ function miniForm(key) {
 const SHEETS = {
   menu: () => ['Board', `
     <div class="list">${row('sessions', 'Sessions', `${libList().length} on this device. Open one or start a new session`)}${row('slidenotes', 'Slide notes and contents', 'Title and notes for this slide, and every slide in order')}${row('session', 'Session details', 'Title, duration and coaching notes')}${row('dupsession', 'Duplicate this session', 'Keep a copy to try a variation', menuNote.dup)}</div>
-    <div class="list">${row('formation', 'Formations', 'Line-ups, block height and width')}${row('teams', 'Teams', 'Colours, crests and flags')}${row('pitch', 'Pitch and view', 'Stadium, floor, guides, labels')}${row('branding', 'Branding', 'Your board name, logo and colours')}</div>
+    <div class="list">${row('addmedia', 'Add video or picture', 'Draw on a clip or a screenshot with the board tools')}${row('formation', 'Formations', 'Line-ups, block height and width')}${row('teams', 'Teams', 'Colours, crests and flags')}${row('pitch', 'Pitch and view', 'Stadium, floor, guides, labels')}${row('branding', 'Branding', 'Your board name, logo and colours')}</div>
     <div class="list">${row('export', 'Export slides', 'Images of the slides you pick, or a video')}${row('exportjson', 'Share board file', 'A file another coach can open here', menuNote.exportjson)}${row('import', 'Import boards', 'Board files or game-model packs from this device')}${row('help', 'Gestures and shortcuts', '')}</div>`],
   sessions: () => {
     const lib = libList();
@@ -2958,6 +3462,15 @@ const SHEETS = {
     <div class="slideacts"><button class="chip" data-go="dupslide">${icon('copy')}<span>Duplicate slide</span></button>${n > 1 ? `<button class="chip danger" data-go="delslide">${icon('trash')}<span>Delete slide</span></button>` : ''}</div>
     ${toc}`];
   },
+  add: () => {
+    const st = doc.steps[doc.cur], md = mediaOf(st), pv = md ? null : prevVideo(doc.cur), np = nearPitch(doc.cur), rows = [];
+    if (!md) rows.push(row('addsame', 'Next slide', 'Continues from this slide: move players, add drawings'));
+    else if (md.kind === 'video') { rows.push(row('addpause', 'Next pause point', offTime() ? `The video stops again at ${fmtT(vctl.scrub)}` : 'The video plays on to the next moment you pick')); rows.push(row('addsame', 'Same moment, next step', 'Keeps this frame and its drawings so you can add more')); }
+    else rows.push(row('addsame', 'Same picture, next step', 'Keeps the picture and its drawings so you can add more'));
+    if (md) rows.push(row('addboard', 'Tactic board', np >= 0 ? `A pitch slide with the players from slide ${np + 1}` : 'A blank pitch slide to explain the idea'));
+    if (pv) rows.push(row('addcont', 'Back to the video', `${esc(pv.name)}: next pause point, from ${fmtT(pv.t)}`));
+    return ['Add a slide', `<div class="list">${rows.join('')}</div><div class="list">${row('addmedia', 'Video or picture', 'A clip or a screenshot from this device')}</div><p class="note">Slides on the same video are its pause points: playing the slides plays the clip on to each one, stops, and draws what you added. On a computer you can also drop a file on the board or paste a screenshot.</p>`];
+  },
   playback: () => ['Playback', `
     <h3>Slides</h3>${seg('playMode', [['auto', 'Play through'], ['tap', 'Tap for each slide']], doc.playMode, 'data-set', 'Slides')}
     <h3>Speed</h3>${seg('speed', [[.5, '0.5×'], [1, '1×'], [2, '2×']], doc.speed, 'data-set', 'Speed')}
@@ -2979,6 +3492,7 @@ const SHEETS = {
     <dt>Playback</dt><dd>The playback button beside + sets how slides play (through, or one tap per slide), the speed, looping and how drawings appear. In tap mode, tap the board or press Space, the right arrow or a presenter clicker for the next move; tap the left edge or press the left arrow to go back.</dd>
     <dt>Slide zoom</dt><dd>Pinch the board to zoom a slide, or use Ctrl or ⌘ with the scroll wheel. Tap the percentage to see the whole pitch again.</dd>
     <dt>Slide notes</dt><dd>Tap the current slide number to give the slide a title and notes, and to see every slide in order. Titles written as “Section — Slide” group slides into sections. On a large screen the notes sit beside the pitch; exported images include them.</dd>
+    <dt>Video and pictures</dt><dd>Board menu, Add video or picture puts a clip or a screenshot on a slide, and every tool draws on it. Players become markers: discs on the ground under the real players; join them with Link arrows or a Shape. On a video, play or scrub to a moment and draw. Once a slide has drawings, moving the video on offers Pause here, which adds the next pause point. Playing the slides plays the clip to each pause point, stops, and draws what you added. With footage on the board, + asks what comes next: the next pause point, the same frame again, or a tactic board. ← and → step one frame (Shift for a second), K plays and pauses. Clips and pictures stay on this device; a shared board file carries its pictures, and asks for the clip on the other device.</dd>
     <dt>Duplicate a slide</dt><dd>Open the slide, then tap the copy button beside its number (or press D, or use Duplicate slide in its notes). The copy has the same players, drawings, view, title and notes, and goes straight after the original; drag it anywhere in the strip. + is different: it adds the next slide, continuing from the one you are on.</dd>
     <dt>Slide order</dt><dd>Hold a slide number, then drag it left or right and let go. With a mouse, just drag it. With the keyboard, focus a slide and press Alt with an arrow key.</dd>
     <dt>Import</dt><dd>Board menu, then Import boards: choose board files or a game-model pack from this device, paste board text, or drop files onto the board on a computer. Back up all in Sessions saves every session in one file.</dd>
@@ -3027,7 +3541,7 @@ const SHEETS = {
       <div class="btnrow"><button class="btn" data-go="expsave"${k && !expBusy ? '' : ' disabled'}>${icon('download')}<span>${k > 1 ? `Save ${k} images` : 'Save image'}</span></button>${canShareFiles() ? `<button class="btn ghost" data-go="expshare"${k && !expBusy ? '' : ' disabled'}>${icon('share')}<span>Share</span></button>` : ''}</div>
       ${msg}<div id="expInline"></div>`];
   },
-  json: () => ['Share board file', `<p class="note">File saving isn't available here, so copy this text and send it. Anyone can open it with Import boards, then Or paste board text.</p><textarea class="json" readonly aria-label="Board file text">${esc(JSON.stringify(doc))}</textarea><div class="btnrow"><button class="btn" data-go="copyjson">${icon('copy')}<span>Copy board text</span></button></div>`]
+  json: () => ['Share board file', `<p class="note">File saving isn't available here, so copy this text and send it. Anyone can open it with Import boards, then Or paste board text.${boardHasMedia() ? ' Pictures and clips aren’t part of the text: they are asked for on the other device.' : ''}</p><textarea class="json" readonly aria-label="Board file text">${esc(JSON.stringify(doc))}</textarea><div class="btnrow"><button class="btn" data-go="copyjson">${icon('copy')}<span>Copy board text</span></button></div>`]
 };
 function renderSheet() {
   const [title, body] = SHEETS[sheetKind](sheetArg);
@@ -3164,6 +3678,11 @@ $('#sheetBody').addEventListener('click', e => {
     case 'importpaste': importPasted(); break;
     case 'notespanel': doc.notesPanel = doc.notesPanel === false; persist(); renderSheet(); renderNotes(); break;
     case 'slidenotes': openSheet('slide'); break;
+    case 'addmedia': relinkId = null; $('#mediaIn').click(); break;
+    case 'addsame': closeSheet(); addStep(); break;
+    case 'addpause': { const md = stageMedia(); closeSheet(); if (md) insertStep({ items: [], media: { id: md.id, t: r3(offTime() ? vctl.scrub : md.t) } }, doc.cur + 1, offTime() ? 'Pause point added. Draw on it with any tool.' : 'Play or scrub to the next moment, then draw on it.'); break; }
+    case 'addboard': { const np = nearPitch(doc.cur); closeSheet(); insertStep({ items: np >= 0 ? clone(doc.steps[np].items) : [] }, doc.cur + 1, 'Tactic board slide added.'); break; }
+    case 'addcont': { const pv = prevVideo(doc.cur); closeSheet(); if (pv) insertStep({ items: [], media: { id: pv.id, t: r3(pv.t) } }, doc.cur + 1, 'Play or scrub to the next moment, then draw on it.'); break; }
     case 'dupslide': duplicateStep(doc.cur); break;
     case 'delslide': deleteStep(doc.cur); if (sheetKind === 'slide') renderSheet(); break;
     case 'backup': backupAll(); break;
@@ -3243,7 +3762,7 @@ function importText(text, fname) {
   if (!found.length) return { error: `${fname || 'That text'} has no boards in it.` };
   const base = (fname || '').replace(/\.(json|325|txt)$/i, '').replace(/[-_]+/g, ' ').trim();
   return { boards: found.map(({ raw, name }, k) => {
-    const d = normalizeDoc(raw);
+    const d = normalizeDoc(raw); takeEmbedded(d);
     const nm = String(name || d.meta.title || (found.length > 1 ? `${base || 'Imported board'} ${k + 1}` : base || 'Imported board')).slice(0, 80);
     if (!d.meta.title) d.meta.title = nm;
     return { d, name: nm };
@@ -3268,7 +3787,7 @@ function addToLibrary(list) {
 }
 function readFile(file) {
   return new Promise((res, rej) => {
-    if (file.size > 8e6) { rej(new Error('big')); return; }
+    if (file.size > 6e7) { rej(new Error('big')); return; }
     const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(r.error); r.readAsText(file);
   });
 }
@@ -3277,7 +3796,7 @@ async function importFiles(files) {
   const all = [], bad = [];
   for (const f of files) {
     try { const res = importText(await readFile(f), f.name); if (res.error) bad.push(res.error); else all.push(...res.boards); }
-    catch (e) { bad.push(`${f.name} couldn’t be read${e && e.message === 'big' ? ': it’s larger than 8 MB' : ''}.`); }
+    catch (e) { bad.push(`${f.name} couldn’t be read${e && e.message === 'big' ? ': it’s larger than 60 MB' : ''}.`); }
   }
   finishImport(all, bad);
 }
@@ -3309,7 +3828,8 @@ function importPasted() {
 async function backupAll() {
   flushLib(); saveToLib(true);
   const lib = libList();
-  const pack = { app: '3-2-5', kind: 'pack', v: 1, created: new Date().toISOString(), boards: lib.map(b => ({ name: b.name, doc: b.doc })) };
+  const boards = []; for (const b of lib) boards.push({ name: b.name, doc: await exportDoc(b.doc) });
+  const pack = { app: '3-2-5', kind: 'pack', v: 1, created: new Date().toISOString(), boards };
   const day = new Date().toISOString().slice(0, 10), name = `3-2-5-sessions-${day}.json`;
   const r = await saveFile(new Blob([JSON.stringify(pack)], { type: 'application/json' }), name);
   toast(r === 'saved' ? `Saved ${lib.length} session${lib.length > 1 ? 's' : ''} as ${name}` : r === 'declined' ? 'Backup cancelled' : 'Files can’t be saved from here. Use Share board file for one board at a time.');
@@ -3320,7 +3840,12 @@ const hasFiles = e => e.dataTransfer && [...(e.dataTransfer.types || [])].includ
 window.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); dropDepth++; document.body.classList.add('dropping'); });
 window.addEventListener('dragover', e => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
 window.addEventListener('dragleave', e => { if (!hasFiles(e)) return; if (--dropDepth <= 0) { dropDepth = 0; document.body.classList.remove('dropping'); } });
-window.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); dropDepth = 0; document.body.classList.remove('dropping'); importFiles(e.dataTransfer.files); });
+window.addEventListener('drop', e => {
+  if (!hasFiles(e)) return; e.preventDefault(); dropDepth = 0; document.body.classList.remove('dropping');
+  const fs = [...e.dataTransfer.files], med = fs.filter(isMediaFile), rest = fs.filter(x => !isMediaFile(x));
+  if (rest.length) importFiles(rest);
+  if (med.length) { relinkId = null; addMediaFiles(med); }
+});
 $('#fileIn').addEventListener('change', e => {
   const files = [...(e.target.files || [])]; e.target.value = '';
   importFiles(files);
@@ -3365,7 +3890,8 @@ const canShareFiles = () => { try { return !!(navigator.canShare && navigator.ca
 
 // One slide as a standalone SVG, framed by that slide's own camera.
 function slideSVG(i, px) {
-  const keep = doc.cur; doc.cur = i;
+  const keep = doc.cur, keepS = stageI; doc.cur = i; stageI = i; syncStage();
+  const md = stageMedia();
   let vb = vbForView(viewOf(i));
   if (PJ && !doc.steps[i].view) {
     const r = regionOf(doc.view), e = projBounds(PJ, { x: r.x - 6, y: r.y - 6, w: r.w + 12, h: r.h + 12 });
@@ -3375,8 +3901,8 @@ function slideSVG(i, px) {
   renderItems(doc.steps[i].items, { ghost: false, ui: false, bench: false });
   const sc = px / Math.max(vb[2], vb[3]), w = Math.round(vb[2] * sc), h = Math.round(vb[3] * sc);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb.map(f).join(' ')}" width="${w}" height="${h}">${pitchSvg.innerHTML}${itemSvg.innerHTML}</svg>`;
-  doc.cur = keep; renderItemsNow();
-  return { svg, w, h };
+  doc.cur = keep; stageI = keepS; syncStage(); renderItemsNow();
+  return { svg, w, h, vb, md };
 }
 // Your name and logo, drawn right-aligned so they sign every export.
 function drawBrand(ctx, right, mid, size, logo) {
@@ -3390,9 +3916,8 @@ function drawBrand(ctx, right, mid, size, logo) {
   ctx.restore();
 }
 async function buildPNG(i, frame) {
-  const { svg, w: bw, h: bh } = slideSVG(i, 2000);
-  const img = await svgImage(svg);
-  const dark = T().dark || !!PJ, n = doc.steps.length;
+  const { img, w: bw, h: bh, dark } = await slideRaster(i, 2000);
+  const n = doc.steps.length;
   const bgc = dark ? '#0D0F12' : '#F3F4F6', ink = dark ? '#EEF0F3' : '#161A1F', mute = dark ? '#989CA2' : '#61656B';
   if (!frame) {
     const cv = document.createElement('canvas'); cv.width = bw; cv.height = bh;
@@ -3467,7 +3992,10 @@ async function fillThumbs() {
   const tok = ++expToken;
   for (let i = 0; i < doc.steps.length; i++) {
     if (tok !== expToken || sheetKind !== 'export') return;
-    if (!expThumbs[i]) { const { svg } = slideSVG(i, 360); expThumbs[i] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); }
+    if (!expThumbs[i]) {
+      if (doc.steps[i].media) { const r = await slideRaster(i, 360); if (tok !== expToken || sheetKind !== 'export') return; expThumbs[i] = r.img.toDataURL('image/jpeg', .8); }
+      else { const { svg } = slideSVG(i, 360); expThumbs[i] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); }
+    }
     const box = document.querySelector(`#sheetBody [data-expslide="${i}"] .sthumb`);
     if (box && !box.firstChild) box.innerHTML = `<img src="${expThumbs[i]}" alt="">`;
     await new Promise(r => setTimeout(r, 0));
@@ -3518,7 +4046,11 @@ function timeline(a = vidRange()[0], b = vidRange()[1]) {
   for (let i = a; i <= b; i++) {
     const h = (i === a ? (intro ? 700 : 900) : i === b ? 1300 : 700) / spd;
     segs.push({ t0: t, t1: t + h, i, move: false }); t += h;
-    if (i < b) { const m = moveDur(i); segs.push({ t0: t, t1: t + m, i, move: true }); t += m; }
+    if (i < b) {
+      const m = moveDur(i), kind = transKind(i); segs.push({ t0: t, t1: t + m, i, move: true, kind }); t += m;
+      // After a clip plays on, or a change of picture, the new slide's drawings draw themselves in.
+      if (kind !== 'move') { const d = introDur(i + 1); if (d) { segs.push({ t0: t, t1: t + d, i: i + 1, move: false, intro: true }); t += d; } }
+    }
   }
   return { segs, total: t };
 }
@@ -3527,6 +4059,8 @@ function frameAt(tl, t) {
   const r = clamp((t - s.t0) / (s.t1 - s.t0), 0, 1), k = ease(r);
   if (s.intro) return { items: revealList(doc.steps[s.i].items, r), view: viewOf(s.i), cur: s.i };
   if (!s.move) return { items: doc.steps[s.i].items, view: viewOf(s.i), cur: s.i };
+  if (s.kind === 'video') { const a = doc.steps[s.i].media.t, b = doc.steps[s.i + 1].media.t, el = t - s.t0; return { items: el < 260 ? fadeList(doc.steps[s.i].items, 1 - el / 260) : [], view: lerpView(viewOf(s.i), viewOf(s.i + 1), k), cur: s.i, mt: a + (b - a) * r }; }
+  if (s.kind === 'cut') { const n = r < .5 ? s.i : s.i + 1; return { items: n > s.i && introDur(n) ? revealList(doc.steps[n].items, 0) : doc.steps[n].items, view: viewOf(n), cur: n, dip: 1 - Math.abs(1 - 2 * r) }; }
   return { items: interp(doc.steps[s.i].items, doc.steps[s.i + 1].items, r), view: lerpView(viewOf(s.i), viewOf(s.i + 1), k), cur: k < .5 ? s.i : s.i + 1 };
 }
 function stampFrame(ctx, VW, VH, cur, logo) {
@@ -3554,17 +4088,21 @@ function stampFrame(ctx, VW, VH, cur, logo) {
   ctx.restore();
 }
 async function recordVideo(q, onProg, cancelled) {
+  // The frame takes the pitch's shape when the range has a pitch slide, otherwise the first picture's.
+  const [ra, rb] = vidRange(); let ref = ra; for (let j = ra; j <= rb; j++) if (!doc.steps[j].media) { ref = j; break; }
+  stageI = ref; syncStage();
+  const refMedia = stageIsMedia();
   const base = baseVB.slice(), tl = timeline(), aspect = base[2] / base[3], long = q === '1080' ? 1920 : 1280, FPS = 30;
   let VW, VH;
   if (aspect >= 1) { VW = long; VH = Math.round(long / aspect / 2) * 2; } else { VH = long; VW = Math.round(long * aspect / 2) * 2; }
   // The pitch and stadium don't change while the slides play, so they're drawn once, larger than the frame, and cropped per frame.
   const E = 1.5, bg = [base[0] + base[2] * (1 - E) / 2, base[1] + base[3] * (1 - E) / 2, base[2] * E, base[3] * E];
   const k = Math.min(4096 / bg[2], 4096 / bg[3], VW / base[2] * 2.2), BW = Math.round(bg[2] * k), BH = Math.round(bg[3] * k);
-  const bgImg = await svgImage(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${bg.map(f).join(' ')}" width="${BW}" height="${BH}">${pitchSvg.innerHTML}</svg>`);
-  const fill = PJ ? '#060708' : T().bg;
+  const bgImg = refMedia ? null : await svgImage(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${bg.map(f).join(' ')}" width="${BW}" height="${BH}">${pitchSvg.innerHTML}</svg>`);
+  const fill = refMedia ? MTHEME.bg : PJ ? '#060708' : T().bg;
   const logo = brand.stamp && brand.logo ? await loadImg(brand.logo).catch(() => null) : null;
   try { if (document.fonts && document.fonts.load) await Promise.all([document.fonts.load('600 20px Geist'), document.fonts.load('800 20px Geist')]); } catch (e) {}
-  const sevs = SFX.on ? tl.segs.filter(sg => sg.move).flatMap(sg => ballEvents(doc.steps[sg.i].items, doc.steps[sg.i + 1].items).map(e => ({ ...e, ms: sg.t0 + e.t * (sg.t1 - sg.t0) }))) : [];
+  const sevs = SFX.on ? tl.segs.filter(sg => sg.move && sg.kind === 'move').flatMap(sg => ballEvents(doc.steps[sg.i].items, doc.steps[sg.i + 1].items).map(e => ({ ...e, ms: sg.t0 + e.t * (sg.t1 - sg.t0) }))) : [];
   const AV = ['video/mp4;codecs=avc1.42E01F,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus'];
   const amime = sevs.length ? AV.find(m => MediaRecorder.isTypeSupported(m)) : null;
   const mime = amime || ['video/mp4;codecs=avc1.42E01F', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m));
@@ -3572,12 +4110,16 @@ async function recordVideo(q, onProg, cancelled) {
   const cv = document.createElement('canvas'); cv.width = VW; cv.height = VH;
   const ctx = cv.getContext('2d');
   const draw = async t => {
-    const fr = frameAt(tl, t), vb = vbForView(fr.view, base);
+    const fr = frameAt(tl, t);
+    stageI = fr.cur; syncStage();
+    const md = stageMedia(), vb = md ? fitAspect(vbForView(fr.view, baseVB), VW / VH) : vbForView(fr.view, base);
     renderItems(fr.items, { ghost: false, ui: false, bench: false });
     const items = await svgImage(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb.map(f).join(' ')}" width="${VW}" height="${VH}">${itemSvg.innerHTML}</svg>`);
-    ctx.fillStyle = fill; ctx.fillRect(0, 0, VW, VH);
-    ctx.drawImage(bgImg, (vb[0] - bg[0]) * k, (vb[1] - bg[1]) * k, vb[2] * k, vb[3] * k, 0, 0, VW, VH);
+    ctx.fillStyle = md ? MTHEME.bg : fill; ctx.fillRect(0, 0, VW, VH);
+    if (md) { const src = await frameOf(md, fr.mt), r = mediaRect(md), ks = VW / vb[2]; if (src) ctx.drawImage(src, (r.x - vb[0]) * ks, (r.y - vb[1]) * ks, r.w * ks, r.h * ks); }
+    else if (bgImg) ctx.drawImage(bgImg, (vb[0] - bg[0]) * k, (vb[1] - bg[1]) * k, vb[2] * k, vb[3] * k, 0, 0, VW, VH);
     ctx.drawImage(items, 0, 0, VW, VH);
+    if (fr.dip) { ctx.fillStyle = `rgba(11,13,16,${f(fr.dip)})`; ctx.fillRect(0, 0, VW, VH); }
     stampFrame(ctx, VW, VH, fr.cur, logo);
     return fr.cur;
   };
@@ -3585,7 +4127,7 @@ async function recordVideo(q, onProg, cancelled) {
   const N = Math.ceil(tl.total / 1000 * FPS) + 1, frames = new Array(N), curs = new Array(N);
   let lastKey = null, lastBlob = null, lastCur = 0;
   for (let fi = 0; fi < N; fi++) {
-    if (cancelled()) { renderItemsNow(); return null; }
+    if (cancelled()) { endStage(); return null; }
     const t = Math.min(tl.total, fi * 1000 / FPS), sg = tl.segs.find(x => t < x.t1) || tl.segs[tl.segs.length - 1], key = sg.move || sg.intro ? null : 'h' + sg.i;
     if (key === null || key !== lastKey) {
       lastCur = await draw(t);
@@ -3595,7 +4137,7 @@ async function recordVideo(q, onProg, cancelled) {
     }
     frames[fi] = lastBlob; curs[fi] = lastCur;
   }
-  renderItemsNow();
+  endStage();
   // Pass 2: play the frames into the recorder at exactly 30 a second, decoding one frame ahead.
   const stream = cv.captureStream(FPS);
   let actx = null, adest = null;
@@ -3640,7 +4182,7 @@ async function startVideo() {
       const tx = $('#vidtxt'); if (tx) tx.textContent = p < .65 ? `Rendering slide ${cur + 1}` : `Encoding the video`;
     }, () => vidCancel || sheetKind !== 'export');
     vid = out ? { state: 'done', q, from, to, ...out, url: URL.createObjectURL(out.blob) } : { state: 'idle', q, from, to };
-  } catch (e) { vid = { state: 'error', q, from, to, err: 'Recording stopped because this browser couldn’t encode the video. Try 720p, or another browser.' }; renderItemsNow(); }
+  } catch (e) { vid = { state: 'error', q, from, to, err: 'Recording stopped because this browser couldn’t encode the video. Try 720p, or another browser.' }; endStage(); }
   if (sheetKind === 'export') renderSheet();
 }
 async function saveVideo(share) {
@@ -3663,18 +4205,18 @@ function videoPane() {
   const [ra, rb] = vidRange(), cnt = rb - ra + 1, mins = secs >= 90 ? `${Math.round(secs / 60)} minutes` : `${secs} second${secs > 1 ? 's' : ''}`;
   const opt = sel => doc.steps.map((x, i) => `<option value="${i}"${i === sel ? ' selected' : ''}>${i + 1}${x.title ? ' · ' + esc(x.title.length > 44 ? x.title.slice(0, 43) + '…' : x.title) : ''}</option>`).join('');
   const range = n > 1 ? `<div class="grid2"><label class="fld"><span>From slide</span><select data-vr="from">${opt(ra)}</select></label><label class="fld"><span>To slide</span><select data-vr="to">${opt(rb)}</select></label></div>` : '';
-  return `${range}<p class="note">Records ${cnt === n ? 'all ' : ''}${cnt} slide${cnt > 1 ? 's' : ''} with their moves and camera zooms at ${doc.speed}× speed, about ${mins}.${brand.stamp ? ' Your branding sits in the corner.' : ''}${secs > 240 ? ' Long videos need a lot of memory; record one exercise at a time on a phone.' : ''}</p>
+  return `${range}<p class="note">Records ${cnt === n ? 'all ' : ''}${cnt} slide${cnt > 1 ? 's' : ''} with their moves and camera zooms at ${doc.speed}× speed, about ${mins}.${brand.stamp ? ' Your branding sits in the corner.' : ''}${secs > 240 ? ' Long videos need a lot of memory; record one exercise at a time on a phone.' : ''}${doc.steps.slice(ra, rb + 1).some(x => x.media && doc.media[x.media.id] && doc.media[x.media.id].kind === 'video') ? ' Your clip is drawn frame by frame without its sound, so long stretches take a while.' : ''}</p>
     <h3>Quality</h3>${seg('vq', [['720', '720p'], ['1080', '1080p']], vid.q, 'data-vq', 'Video quality')}${err}
     <div class="btnrow"><button class="btn" data-go="vidrec">${icon('play')}<span>Record video</span></button></div>`;
 }
 async function exportJSON() {
-  if (downloads) {
-    try {
-      await downloads.save({ filename: slug() + '.json', data: JSON.stringify(doc) });
-      if (sheetKind === 'menu') { menuNote.exportjson = { ok: true, text: `Saved as ${slug()}.json` }; renderSheet(); } else toast('Board file saved');
-      return;
-    }
-    catch (e) { if (e && e.code === 'declined') return; }
+  // The file carries the board and its pictures. Where files can't be saved, the board's text is offered to copy instead.
+  const r = await saveFile(new Blob([JSON.stringify(await exportDoc(doc))], { type: 'application/json' }), slug() + '.json');
+  if (r === 'declined') return;
+  if (r === 'saved') {
+    const vn = docHasVideo(doc) ? ' Video clips aren’t inside it: send the clip too.' : '';
+    if (sheetKind === 'menu') { menuNote.exportjson = { ok: true, text: `Saved as ${slug()}.json.${vn}` }; renderSheet(); } else toast('Board file saved.' + vn);
+    return;
   }
   openSheet('json');
 }
@@ -3706,6 +4248,11 @@ window.addEventListener('keydown', e => {
   if (e.key === ' ') { e.preventDefault(); playing ? stopPlay() : play(); return; }
   if ((e.key === 'f' || e.key === 'F') && !mod) { setFocus(!focusMode); return; }
   if ((e.key === 'n' || e.key === 'N') && !mod) { openSheet('slide'); return; }
+  if ((e.key === 'k' || e.key === 'K') && !mod && vbarWanted()) { vToggle(); return; }
+  if (!sel && !group.size && !mod && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && vbarWanted()) {
+    e.preventDefault(); const md = stageMedia(), now = vctl.mode === 'play' ? mvid.currentTime : vctl.scrub != null ? vctl.scrub : md.t;
+    vScrub(now + (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 1 : 1 / 30)); vScrubEnd(); return;
+  }
   if ((e.key === 'd' || e.key === 'D') && !mod && !sel && !group.size) { duplicateStep(doc.cur); return; }
   if (!mod && (e.key === '+' || e.key === '=')) { zoomBy(1.25); return; }
   if (!mod && (e.key === '-' || e.key === '_')) { zoomBy(.8); return; }

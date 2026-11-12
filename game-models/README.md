@@ -54,3 +54,7 @@ The diagrams are teaching frames, not tracked match coordinates. Positions show 
 Every pattern follows one rule: a player with a man on his back never turns; he sets first time on an angle (a V or a zigzag) to a teammate facing forward, and only a free, side-on player plays on. Every exercise opens with a set-up slide, then each key action on its own animated slide, then coaching points and progressions. Every slide has its own title and notes (organisation, rules, scoring, coaching points, questions, progressions, dose). Tap the current slide number for the notes and the contents; on a large screen the notes sit beside the pitch. Exported images print each slide's notes, so an export is the printed manual.
 
 Import it with **Board menu → Import boards**. It opens in tap mode: each tap plays the next action.
+
+## Game model · Flexible 4-2-3-1 · Possession on purpose
+
+`game-model-4-2-3-1.json` is one board of 96 animated slides: the idea (draw, find, face forward, accelerate), identity, shape and roles (DLPs beside the centre-backs, deep fullbacks, inverted wingers, the 10 in the right half-space, the 9 on a blind side), eight non-negotiables, patterns P1-P7 and a training week with sessions T1-T5. The opponent's 4-4-2 reacts on every slide.
